@@ -34,7 +34,7 @@ class PostgresPandasWrapper:
         elif file_format == "xlsx" or file_format == "xls":
             response.to_excel(filename, index=False)
         elif file_format == "json":
-            response.to_json(filename, index=False)
+            response.to_json(filename)
         else:
             raise IOError("File format either not implemented or not available")
 
@@ -48,4 +48,3 @@ class PostgresPandasWrapper:
 
     def disconnect(self):
         self.connection.close()
-        print("Database closed successfully")

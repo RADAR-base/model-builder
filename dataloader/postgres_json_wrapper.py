@@ -53,4 +53,3 @@ class PostgresJsonWrapper:
 
     def disconnect(self):
         self.connection.close()
-        print("Database closed successfully")
