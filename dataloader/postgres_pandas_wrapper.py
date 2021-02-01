@@ -2,15 +2,11 @@ import pandas as pd
 from sqlalchemy import create_engine
 import psycopg2
 from typing import List
+from dataloader import PostgresWrapper
 
-class PostgresPandasWrapper:
+class PostgresPandasWrapper(PostgresWrapper):
     def __init__(self, **args):
-        self.user = args.get('user', 'postgres')
-        self.password = args.get('password', "")
-        self.port = args.get('port', 5432)
-        self.dbname = args.get('dbname', 'opendb')
-        self.host = args.get('host', 'localhost')
-        self.connection = None
+        super().__init__(**args)
 
     def _create_db_url(self):
         db_url = "postgresql+psycopg2://" +  self.user + ":" + self.password + "@"+ self.host + ":" + str(self.port) + "/" + self.dbname
@@ -19,11 +15,10 @@ class PostgresPandasWrapper:
     def connect(self):
         db_url = self._create_db_url()
         alchemy_engine  = create_engine(db_url, pool_recycle=3600)
-        pg_conn = alchemy_engine.connect()
-        self.connection = pg_conn
+        self.connection = alchemy_engine.connect()
 
-    def get_response(self, cols:List[str ], dataset:str):
-        query = self.querymaker(cols, dataset)
+    def get_response(self, cols:List[str ], tablename:str):
+        query = self.querymaker(cols, tablename)
         response = pd.read_sql(query, self.connection)
         return response
 
@@ -37,14 +32,6 @@ class PostgresPandasWrapper:
             response.to_json(filename)
         else:
             raise IOError("File format either not implemented or not available")
-
-    def get_and_save_response(self, cols:List[str ], dataset:str, filename):
-        response = self.get_response(cols, dataset)
-        self.save_response(response,filename)
-
-    def querymaker(self, cols:List[str], dataset:str):
-        query = "SELECT " + ", ".join(cols) + "FROM " + dataset
-        return query
 
     def disconnect(self):
         self.connection.close()

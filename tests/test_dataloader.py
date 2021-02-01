@@ -33,7 +33,7 @@ class TestPostgresJsonWrapper(unittest.TestCase):
     def test_get_response(self):
         dbconn = PostgresJsonWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
-        response=dbconn.get_response(cols=["*"], dataset="test")
+        response=dbconn.get_response(cols=["*"], tablename="test")
         self.assertEqual(response, self.expected)
         dbconn.disconnect()
 
@@ -41,7 +41,7 @@ class TestPostgresJsonWrapper(unittest.TestCase):
         dbconn = PostgresJsonWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.json"
-        dbconn.get_and_save_response(cols=["*"], dataset="test", filename=filename)
+        dbconn.get_and_save_response(cols=["*"], tablename="test", filename=filename)
         with open(filename) as json_file:
             response = json.load(json_file)
         self.assertEqual(response, self.expected)
@@ -61,7 +61,7 @@ class TestPostgresPandasWrapper(unittest.TestCase):
     def test_get_response(self):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
-        response=dbconn.get_response(cols=["*"], dataset="test")
+        response=dbconn.get_response(cols=["*"], tablename="test")
         assert_frame_equal(response, self.expected)
         dbconn.disconnect()
 
@@ -69,7 +69,7 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.csv"
-        dbconn.get_and_save_response(cols=["*"], dataset="test",filename=filename)
+        dbconn.get_and_save_response(cols=["*"], tablename="test",filename=filename)
         response = pd.read_csv(filename)
         assert_frame_equal(response, self.expected)
         os.remove(filename)
@@ -79,7 +79,7 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.json"
-        dbconn.get_and_save_response(cols=["*"], dataset="test",filename=filename)
+        dbconn.get_and_save_response(cols=["*"], tablename="test",filename=filename)
         response = pd.read_json(filename)
         assert_frame_equal(response, self.expected)
         os.remove(filename)
@@ -89,7 +89,7 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.xlsx"
-        dbconn.get_and_save_response(cols=["*"], dataset="test",filename=filename)
+        dbconn.get_and_save_response(cols=["*"], tablename="test",filename=filename)
         response = pd.read_excel(filename)
         assert_frame_equal(response, self.expected)
         os.remove(filename)
