@@ -4,3 +4,4 @@ pandas
 sqlalchemy
 testing.postgresql
 pytest
+openpyxl
