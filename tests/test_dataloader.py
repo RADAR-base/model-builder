@@ -22,9 +22,8 @@ class TestPostgresJsonWrapper(unittest.TestCase):
     def setUp(self):
         self.name = "test"
         self.port = 5678
-        self.path = "/tmp/my_test_db"
-        self.postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=False, on_initialized=handler, database= self.name,
-                    port=self.port, base_dir=self.path)()
+        self.postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=True, on_initialized=handler, database= self.name,
+                    port=self.port)()
         self.postgresql.initialize_database()
         self.querybuilder = QueryBuilder("test")
         self.query = self.querybuilder.get_all_columns()
@@ -55,9 +54,8 @@ class TestPostgresPandasWrapper(unittest.TestCase):
     def setUp(self):
         self.name = "test"
         self.port = 5678
-        self.path = "/tmp/my_test_db"
-        self.postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=False, on_initialized=handler, database= self.name,
-                    port=self.port, base_dir=self.path)()
+        self.postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=True, on_initialized=handler, database= self.name,
+                    port=self.port)()
         self.postgresql.initialize_database()
         self.querybuilder = QueryBuilder("test")
         self.query = self.querybuilder.get_all_columns()
@@ -99,3 +97,6 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         assert_frame_equal(response, self.expected)
         os.remove(filename)
         dbconn.disconnect()
+
+    def tearDown(self):
+        self.postgresql.stop()
