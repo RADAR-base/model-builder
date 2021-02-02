@@ -3,6 +3,7 @@ import testing.postgresql
 import psycopg2
 from dataloader.postgres_json_wrapper import PostgresJsonWrapper
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
+from dataloader.querybuilder import QueryBuilder
 import json
 import os
 import pandas as pd
@@ -25,6 +26,8 @@ class TestPostgresJsonWrapper(unittest.TestCase):
         self.postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=False, on_initialized=handler, database= self.name,
                     port=self.port, base_dir=self.path)()
         self.postgresql.initialize_database()
+        self.querybuilder = QueryBuilder("test")
+        self.query = self.querybuilder.get_all_columns()
         self.expected = '[{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}]'
 
     def tearDown(self):
@@ -33,7 +36,7 @@ class TestPostgresJsonWrapper(unittest.TestCase):
     def test_get_response(self):
         dbconn = PostgresJsonWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
-        response=dbconn.get_response(cols=["*"], tablename="test")
+        response=dbconn.get_response(self.query)
         self.assertEqual(response, self.expected)
         dbconn.disconnect()
 
@@ -41,7 +44,7 @@ class TestPostgresJsonWrapper(unittest.TestCase):
         dbconn = PostgresJsonWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.json"
-        dbconn.get_and_save_response(cols=["*"], tablename="test", filename=filename)
+        dbconn.get_and_save_response(self.query, filename=filename)
         with open(filename) as json_file:
             response = json.load(json_file)
         self.assertEqual(response, self.expected)
@@ -56,12 +59,14 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         self.postgresql = testing.postgresql.PostgresqlFactory(cache_initialized_db=False, on_initialized=handler, database= self.name,
                     port=self.port, base_dir=self.path)()
         self.postgresql.initialize_database()
+        self.querybuilder = QueryBuilder("test")
+        self.query = self.querybuilder.get_all_columns()
         self.expected = pd.DataFrame([{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}])
 
     def test_get_response(self):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
-        response=dbconn.get_response(cols=["*"], tablename="test")
+        response=dbconn.get_response(self.query)
         assert_frame_equal(response, self.expected)
         dbconn.disconnect()
 
@@ -69,7 +74,7 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.csv"
-        dbconn.get_and_save_response(cols=["*"], tablename="test",filename=filename)
+        dbconn.get_and_save_response(self.query, filename=filename)
         response = pd.read_csv(filename)
         assert_frame_equal(response, self.expected)
         os.remove(filename)
@@ -79,7 +84,7 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.json"
-        dbconn.get_and_save_response(cols=["*"], tablename="test",filename=filename)
+        dbconn.get_and_save_response(self.query, filename=filename)
         response = pd.read_json(filename)
         assert_frame_equal(response, self.expected)
         os.remove(filename)
@@ -89,7 +94,7 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         filename = "tmp.xlsx"
-        dbconn.get_and_save_response(cols=["*"], tablename="test",filename=filename)
+        dbconn.get_and_save_response(self.query, filename=filename)
         response = pd.read_excel(filename)
         assert_frame_equal(response, self.expected)
         os.remove(filename)

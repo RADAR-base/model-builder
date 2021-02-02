@@ -16,20 +16,16 @@ class PostgresWrapper(ABC):
         pass
 
     @abstractmethod
-    def get_response(self, cols: List[str ], tablename:str):
+    def get_response(self, query: str):
         pass
 
     @abstractmethod
     def save_response(self, response, filename):
         pass
 
-    def get_and_save_response(self, cols:List[str ], tablename:str, filename: str):
-        response = self.get_response(cols, tablename)
+    def get_and_save_response(self, query: str, filename: str):
+        response = self.get_response(query)
         self.save_response(response,filename)
-
-    def querymaker(self, cols:List[str], tablename:str):
-        query = "SELECT " + ", ".join(cols) + "FROM " + tablename
-        return query
 
     @abstractmethod
     def disconnect(self):
