@@ -28,7 +28,7 @@ class PostgresWrapper(ABC):
         self.save_response(response,filename)
 
     def querymaker(self, cols:List[str], tablename:str):
-        query = "SELECT " + ", ".join(cols) + "FROM " + tablename
+        query = "SELECT " + ", ".join(cols) + " FROM " + tablename
         return query
 
     @abstractmethod
