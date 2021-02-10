@@ -2,14 +2,41 @@
 
 It saves both metadata and artifacts locally in the model-builder directory.
 
+## Creating conda Enviroment
+
+First, install conda enviroment using:
+
+```bash
+conda env create --file examples/linear_regression_local/conda.yaml
+```
+
+Then, activate the conda enviroment using:
+
+```bash
+conda activate linear_regression_local_example
+```
+
+## Running Linear Regression code
+
 To run it, use:
 
 ```bash
  mlflow run examples/linear_regression_local
 ```
 
-You can change hyperparameters using,
+You can change hyperparameters using:
 
 ```bash
-mlflow run examples/linear_regression_local -P alpha=0.5 -P l1_ratio=0.8
+python examples/linear_regression_local/train.py --alpha 0.2 --l1-ratio 0.8
 ```
+
+
+## Results
+
+Initiate mlflow server using the given command:
+
+```bash
+mlflow server
+```
+
+Now, You can observe the results on `http://127.0.0.1:5000`
