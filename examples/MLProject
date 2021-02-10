@@ -1,0 +1,10 @@
+name: linear_regression_example
+
+conda_env: linear_regression/conda.yaml
+
+entry_points:
+  main:
+    parameters:
+      alpha: {type: float, default: 0.2}
+      l1_ratio: {type: float, default: 0.1}
+    command: "python linear_regression/train.py --alpha {alpha} --l1-ratio {l1_ratio}"
