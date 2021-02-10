@@ -8,13 +8,21 @@ import numpy as np
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import ElasticNet
+from mlflow.tracking import MlflowClient
 # Get the current working directory
-sys.path.append(os.path.abspath('../'))
+sys.path.append(os.path.abspath('.'))
 
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
 
 import mlflow
 import mlflow.sklearn
+
+def set_env_vars():
+    os.environ["MLFLOW_URL"] = "http://127.0.0.1:5000"
+    os.environ["MLFLOW_TRACKING_URI"] = "http://127.0.0.1:5000"
+    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://127.0.0.1:9000"
+    os.environ["AWS_ACCESS_KEY_ID"] = "AKIAIOSFODNN7EXAMPLE"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
 
 def eval_metrics(actual, pred):
     rmse = np.sqrt(mean_squared_error(actual, pred))
@@ -27,6 +35,7 @@ if __name__ == "__main__":
     warnings.filterwarnings("ignore")
     np.random.seed(40)
 
+    set_env_vars()
     parser = argparse.ArgumentParser()
     parser.add_argument("--alpha")
     parser.add_argument("--l1-ratio")
@@ -39,6 +48,22 @@ if __name__ == "__main__":
     data = dbconn.get_response(cols=["*"], tablename="wine_dataset")
     dbconn.disconnect()
 
+    mlflow.set_tracking_uri("http://127.0.0.1:5000")
+     # #Set experiment
+    mlflow.set_experiment("test-experiment")
+    #print(f"tracking_uri: {mlflow.get_tracking_uri()}")
+    #print(f"artifact_uri: {mlflow.get_artifact_uri()}")
+    # Create an experiment with a name that is unique and case sensitive.
+    #client = MlflowClient()
+    #experiment_id = client.set_experiment("test1")
+
+    # Fetch experiment metadata information
+    #experiment = client.get_experiment(2)
+    #print("Name: {}".format(experiment.name))
+    #print("Experiment_id: {}".format(experiment.experiment_id))
+    #print("Artifact Location: {}".format(experiment.artifact_location))
+    #print("Tags: {}".format(experiment.tags))
+    #print("Lifecycle_stage: {}".format(experiment.lifecycle_stage))
     # Split the data into training and test sets. (0.75, 0.25) split.
     train, test = train_test_split(data)
 
@@ -70,4 +95,4 @@ if __name__ == "__main__":
         mlflow.log_metric("r2", r2)
         mlflow.log_metric("mae", mae)
 
-        mlflow.sklearn.log_model(lr, "model")
+        mlflow.sklearn.log_model(lr, "linear_regression_model")

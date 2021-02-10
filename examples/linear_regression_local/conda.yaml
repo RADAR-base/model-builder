@@ -1,4 +1,4 @@
-name: linear_regression_example
+name: linear_regression_local_example
 channels:
   - defaults
 dependencies:
