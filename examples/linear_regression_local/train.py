@@ -28,8 +28,8 @@ if __name__ == "__main__":
     np.random.seed(40)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--alpha")
-    parser.add_argument("--l1-ratio")
+    parser.add_argument("--alpha", default=0.1),
+    parser.add_argument("--l1-ratio", default=0.2)
     args = parser.parse_args()
 
     # Read the wine-quality data from the Postgres database using dataloader
