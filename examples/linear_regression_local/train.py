@@ -33,7 +33,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Read the wine-quality data from the Postgres database using dataloader
-    dbconn = PostgresPandasWrapper(dbname="opendb", user="heet", password="password")
+    # ADD DATABASE DETAILS HERE
+    dbconn = PostgresPandasWrapper(dbname="", user="", password="")
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
     data = dbconn.get_response(cols=["*"], tablename="wine_dataset")

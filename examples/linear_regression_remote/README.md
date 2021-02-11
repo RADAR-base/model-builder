@@ -2,6 +2,8 @@
 
 It saves both metadata and artifacts on mlflow-server docker stack.
 
+Before this example, go to the README file in examples directory and add winedataset your local postgres database then add the same detail in line 46 of `train.py`.
+
 ## Deploying mlflow-server docker stack
 
 To deploy the  mlflow-server docker stack follow the instruction from [here](https://github.com/RADAR-base/RADAR-Docker/tree/distributed-dcompose/distributed-dcompose-stack/mlflow).

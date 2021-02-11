@@ -42,28 +42,20 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Read the wine-quality data from the Postgres database using dataloader
-    dbconn = PostgresPandasWrapper(dbname="opendb", user="heet", password="password")
+    # ADD DATABASE DETAILS HERE
+    dbconn = PostgresPandasWrapper(dbname="", user="", password="")
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
     data = dbconn.get_response(cols=["*"], tablename="wine_dataset")
     dbconn.disconnect()
 
     mlflow.set_tracking_uri("http://127.0.0.1:5000")
-     # #Set experiment
+    #Set experiment
     mlflow.set_experiment("test-experiment")
+
     #print(f"tracking_uri: {mlflow.get_tracking_uri()}")
     #print(f"artifact_uri: {mlflow.get_artifact_uri()}")
-    # Create an experiment with a name that is unique and case sensitive.
-    #client = MlflowClient()
-    #experiment_id = client.set_experiment("test1")
 
-    # Fetch experiment metadata information
-    #experiment = client.get_experiment(2)
-    #print("Name: {}".format(experiment.name))
-    #print("Experiment_id: {}".format(experiment.experiment_id))
-    #print("Artifact Location: {}".format(experiment.artifact_location))
-    #print("Tags: {}".format(experiment.tags))
-    #print("Lifecycle_stage: {}".format(experiment.lifecycle_stage))
     # Split the data into training and test sets. (0.75, 0.25) split.
     train, test = train_test_split(data)
 
