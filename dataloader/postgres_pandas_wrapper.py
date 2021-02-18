@@ -17,8 +17,7 @@ class PostgresPandasWrapper(PostgresWrapper):
         alchemy_engine  = create_engine(db_url, pool_recycle=3600)
         self.connection = alchemy_engine.connect()
 
-    def get_response(self, cols:List[str ], tablename:str):
-        query = self.querymaker(cols, tablename)
+    def get_response(self, query: str):
         response = pd.read_sql(query, self.connection)
         return response
 
