@@ -38,7 +38,7 @@ $ grant all privileges on database <database_name> to <username>;
 Run the script in the example file:
 
 ```
-python upload_data_to_postgres.py  --user=<username> --password=<password> --dbname=<database_name>
+python upload_data_to_postgres.py  --user=<username> --password=<password> --dbname=<database_name> --files data/wine-quality.csv --tablenames wine_dataset
 ```
 
 This would create a table named `wine_dataset` in the database `<database_name>`.
