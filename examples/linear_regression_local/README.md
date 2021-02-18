@@ -23,7 +23,7 @@ conda activate linear_regression_local_example
 To run it, use:
 
 ```bash
- mlflow run examples/linear_regression_local
+ python examples/linear_regression_local/train.py
 ```
 
 You can change hyperparameters using:

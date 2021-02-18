@@ -12,6 +12,7 @@ from sklearn.linear_model import ElasticNet
 sys.path.append(os.path.abspath('.'))
 
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
+from dataloader.querybuilder import QueryBuilder
 
 import mlflow
 import mlflow.sklearn
@@ -32,12 +33,15 @@ if __name__ == "__main__":
     parser.add_argument("--l1-ratio", default=0.2)
     args = parser.parse_args()
 
+    # Importing query builder
+    querybuilder = QueryBuilder(tablename="wine_dataset")
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     dbconn = PostgresPandasWrapper(dbname="", user="", password="")
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
-    data = dbconn.get_response(cols=["*"], tablename="wine_dataset")
+    query = querybuilder.get_all_columns()
+    data = dbconn.get_response(query)
     dbconn.disconnect()
 
     # Split the data into training and test sets. (0.75, 0.25) split.

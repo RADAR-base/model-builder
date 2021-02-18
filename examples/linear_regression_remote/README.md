@@ -29,7 +29,7 @@ conda activate linear_regression_remote_example
 To run it, use:
 
 ```bash
- mlflow run examples/linear_regression_remote
+ python examples/linear_regression_remote/train.py
 ```
 
 You can change hyperparameters using:
