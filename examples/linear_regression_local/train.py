@@ -31,6 +31,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--alpha", default=0.1),
     parser.add_argument("--l1-ratio", default=0.2)
+    parser.add_argument("--num-iterations", default=1000)
     args = parser.parse_args()
 
     # Importing query builder
@@ -55,9 +56,10 @@ if __name__ == "__main__":
 
     alpha = float(args.alpha)
     l1_ratio = float(args.l1_ratio)
+    num_iterations = float(args.num_iterations)
 
     with mlflow.start_run():
-        lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
+        lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=num_iterations)
         lr.fit(train_x, train_y)
 
         predicted_qualities = lr.predict(test_x)
@@ -75,4 +77,4 @@ if __name__ == "__main__":
         mlflow.log_metric("r2", r2)
         mlflow.log_metric("mae", mae)
 
-        mlflow.sklearn.log_model(lr, "model")
+        mlflow.sklearn.log_model(lr, "elastic_net_wine_model")

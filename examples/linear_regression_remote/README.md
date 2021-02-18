@@ -24,6 +24,26 @@ Then, activate the conda enviroment using:
 conda activate linear_regression_remote_example
 ```
 
+## Installing without using conda
+
+You can install the depedencies directly too using,
+
+```bash
+pip install -r requirements.txt
+pip install -r examples/linear_regression_remote/requirements.txt
+```
+
+You would need to set global enviroment variables.
+
+```bash
+export MLFLOW_URL: http://127.0.0.1:5000
+export MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+export MLFLOW_S3_ENDPOINT_URL: http://127.0.0.1:9000
+export AWS_ACCESS_KEY_ID: <AWS KEY ID>
+export AWS_SECRET_ACCESS_KEY: <AWS EXAMPLE SECRET KEY>
+```
+
+
 ## Running Linear Regression code
 
 To run it, use:

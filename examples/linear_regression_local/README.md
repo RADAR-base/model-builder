@@ -18,6 +18,16 @@ Then, activate the conda enviroment using:
 conda activate linear_regression_local_example
 ```
 
+## Installing without using conda
+
+You can install the depedencies directly too using,
+
+```bash
+pip install -r requirements.txt
+pip install -r examples/linear_regression_local/requirements.txt
+```
+
+
 ## Running Linear Regression code
 
 To run it, use:

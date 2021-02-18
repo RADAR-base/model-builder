@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     mlflow.set_tracking_uri("http://127.0.0.1:5000")
     #Set experiment
-    mlflow.set_experiment("test-experiment")
+    mlflow.set_experiment("wine_elastic_net_experiment")
 
     #print(f"tracking_uri: {mlflow.get_tracking_uri()}")
     #print(f"artifact_uri: {mlflow.get_artifact_uri()}")
@@ -91,4 +91,4 @@ if __name__ == "__main__":
         mlflow.log_metric("r2", r2)
         mlflow.log_metric("mae", mae)
 
-        mlflow.sklearn.log_model(lr, "linear_regression_model")
+        mlflow.sklearn.log_model(lr, "elastic_net_wine_model")
