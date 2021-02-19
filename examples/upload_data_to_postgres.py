@@ -13,6 +13,7 @@ def get_argparser():
                         help='Password for the mention username', default="")
     parser.add_argument('-f','--files', nargs='+', help='csv files to upload', required=True)
     parser.add_argument('-t','--tablenames', nargs='+', help='tablename with respect to each file', required=True)
+    parser.add_argument('-e','--if_exists', help="How to behave if the table already exists. \n 1. replace: Drop the table before inserting new values. \n 2. append: Insert new values to the existing table." , default="append", choices=["append", "replace"])
     return parser
 
 def os_file_check(files):
@@ -29,19 +30,16 @@ def main():
     dbname = args.dbname
     files = args.files
     tablenames = args.tablenames
+    if_exists_choice = args.if_exists
     if len(tablenames) != len(files):
         raise IOError("Number of input files must be equal to number of input tablenames")
-    print(files)
     os_file_check(files)
-    df_files = [pd.read_csv(filepath) for filepath in files]
     user_info = user + ":" + password
-    for df in df_files:
-        df.columns = [x.replace(" ", "_") for x in df.columns]
-
     engine = create_engine('postgresql://'+ user_info + '@localhost:5432/' + dbname)
-
-    for i, df in enumerate(df_files):
-        df.to_sql(tablenames[i], engine, index=False)
+    for i, filepath in enumerate(files):
+        df = pd.read_csv(filepath)
+        df.columns = [x.replace(" ", "_") for x in df.columns]
+        df.to_sql(tablenames[i], engine, index=False, if_exists=if_exists_choice)
 
 if __name__ == "__main__":
     main()

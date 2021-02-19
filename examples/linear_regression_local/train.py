@@ -56,7 +56,7 @@ if __name__ == "__main__":
 
     alpha = float(args.alpha)
     l1_ratio = float(args.l1_ratio)
-    num_iterations = float(args.num_iterations)
+    num_iterations = int(args.num_iterations)
 
     with mlflow.start_run():
         lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=num_iterations)
