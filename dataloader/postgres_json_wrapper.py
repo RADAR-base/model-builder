@@ -27,9 +27,8 @@ class PostgresJsonWrapper(PostgresWrapper):
         cursor.close()
         return res
 
-    def get_response(self, cols:List[str ], tablename:str):
+    def get_response(self, query: str):
         cursor = self._get_json_cursor()
-        query = self.querymaker(cols, tablename)
         response = self._execute_and_fetch(cursor, query)
         return json.dumps(response)
 
