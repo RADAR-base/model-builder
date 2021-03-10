@@ -1,14 +1,7 @@
 from typing import Optional
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, HTTPException, Header, Query
 from fastapi.responses import PlainTextResponse
-#import DataInputModel
-
-from pydantic import BaseModel
-from typing import List, Union
-
-class DataInputModel(BaseModel):
-    columns: List[str]
-    data: List[List[Union[int, float]]]
+from data_input_format import DataInputModelSplit
 
 from mlflow_interface import MlflowInterface
 import mlflow
@@ -34,13 +27,13 @@ def get_model_version_info(name: str, version: int):
 #    return 0
 
 @app.post("/model/{name}/{version}/invocation")
-def get_inference(name: str, version: int, data: DataInputModel):
+def get_inference(name: str, version: int, data: DataInputModelSplit):
     return mlflow_interface.get_inference(name, version, data)
 
 @app.post("/model/{name}/invocation/best")
-def get_inference_from_best_model(name: str, data: DataInputModel):
+def get_inference_from_best_model(name: str, data: DataInputModelSplit):
     return  mlflow_interface.get_inference_from_best_model(name, data)
 
 @app.post("/model/{name}/invocation/latest")
-def get_inference_from_latest_model(name: str, data: DataInputModel):
+def get_inference_from_latest_model(name: str, data: DataInputModelSplit):
     return  mlflow_interface.get_inference_from_latest_model(name, data)
