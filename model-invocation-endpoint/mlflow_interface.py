@@ -49,8 +49,15 @@ class MlflowInterface():
         return list(loaded_model.predict(df))
 
     def _convert_data_to_df(self, data):
-        print(data)
-        df = pd.DataFrame(columns=data.columns, data = data.data)
+        data_format = data.format
+        if data_format == "pandas_split":
+            df = pd.DataFrame(columns=data.columns, data = data.data)
+        elif data_format == "pandas_record":
+            df = pd.DataFrame.from_records(data.record)
+        elif data_format == "tf-instances":
+            df = pd.DataFrame(data.instances)
+        elif data_format == "tf-inputs":
+            df = pd.DataFrame(data.inputs)
         return df
 
     def get_inference(self, name, version, data):

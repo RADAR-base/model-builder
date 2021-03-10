@@ -4,21 +4,22 @@ from typing import List, Union, Dict
 
 class DataInputModelSplit(BaseModel):
     columns: List[str]
-    data: List[List[Union[int, float]]]
+    data: List[List[Union[int, float, str]]]
+    format = "pandas_split"
 
     @validator('data')
     def data_size_must_be_equal_column(cls, v, values):
         column_len = len(values["columns"])
-        print(column_len)
         for data_point in v:
             if len(data_point) != column_len:
                 raise ValueError("Size of data point is different from that of column")
         return v
 
 class DataInputModelRecord(BaseModel):
-    data: List[Dict[str, Union[int, float]]]
+    record: List[Dict[str, Union[int, float, str]]]
+    format = "pandas_record"
 
-    @validator("data")
+    @validator("record")
     def check_dict_keys(cls, v):
         if len(v) == 0:
             raise ValueError("Data is empty")
@@ -30,12 +31,12 @@ class DataInputModelRecord(BaseModel):
 
 
 class DataInputModelInputs(BaseModel):
-    inputs: Dict[str, List[Union[int, float]]]
-
+    inputs: Dict[str, List[Union[int, float, str, List[Union[int, float, str]]]]]
+    format = "tf-inputs"
     @validator("inputs")
     def check_input_format(cls, v):
         input_len = None
-        for key, value in v.iteritems():
+        for key, value in v.items():
             if input_len is None:
                 input_len = len(value)
             elif input_len != len(value):
@@ -43,8 +44,8 @@ class DataInputModelInputs(BaseModel):
         return v
 
 class DataInputModelInstances(BaseModel):
-    instances: List[Dict[str, Union[int, float]]]
-
+    instances: List[Dict[str, Union[int, float, str, List[Union[int, float, str]]]]]
+    format = "tf-instances"
     @validator("instances")
     def check_instance_format(cls, v):
         if len(v) == 0:
@@ -54,3 +55,5 @@ class DataInputModelInstances(BaseModel):
             if first_dict_keys != set(dct.keys()):
                 raise ValueError("Mismatch columns in the input")
         return v
+
+DataInputModel = Union[DataInputModelSplit, DataInputModelInstances, DataInputModelInputs, DataInputModelRecord]
