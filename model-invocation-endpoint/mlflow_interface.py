@@ -44,7 +44,6 @@ class MlflowInterface():
             return all_runs[len(all_runs) - version]
 
     def _mlflow_inference(self, model_run, df):
-        print(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
         loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
         return list(loaded_model.predict(df))
 
@@ -72,7 +71,6 @@ class MlflowInterface():
 
     def get_inference_from_best_model(self, name, data):
         experiment_run = self._get_best_model(name)
-        print(experiment_run)
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 

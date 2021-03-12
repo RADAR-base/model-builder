@@ -22,8 +22,8 @@ def set_env_vars():
     os.environ["MLFLOW_URL"] = "http://172.16.1.21:5000"
     os.environ["MLFLOW_TRACKING_URI"] = "http://172.16.1.21:5000"
     os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://172.16.1.21:9000"
-    os.environ["AWS_ACCESS_KEY_ID"] = "AKIAIOSFODNN7EXAMPLE"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+    os.environ["AWS_ACCESS_KEY_ID"] = ""
+    os.environ["AWS_SECRET_ACCESS_KEY"] = ""
 
 def eval_metrics(actual, pred):
     rmse = np.sqrt(mean_squared_error(actual, pred))
