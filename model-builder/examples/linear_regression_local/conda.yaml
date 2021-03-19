@@ -1,0 +1,10 @@
+name: linear_regression_local_example
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - scikit-learn
+  - pip:
+    - mlflow
+    - -r file:../../requirements.txt
