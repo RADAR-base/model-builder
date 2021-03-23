@@ -1,10 +1,10 @@
 
 from pydantic import BaseModel,ValidationError, validator
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Any
 
 class DataInputModelSplit(BaseModel):
     columns: List[str]
-    data: List[List[Union[int, float, str]]]
+    data: List[List[Any]]
     format = "pandas_split"
 
     @validator('data')
@@ -16,7 +16,7 @@ class DataInputModelSplit(BaseModel):
         return v
 
 class DataInputModelRecord(BaseModel):
-    record: List[Dict[str, Union[int, float, str]]]
+    record: List[Dict[str, Any]]
     format = "pandas_record"
 
     @validator("record")
@@ -31,7 +31,7 @@ class DataInputModelRecord(BaseModel):
 
 
 class DataInputModelInputs(BaseModel):
-    inputs: Dict[str, List[Union[int, float, str, List[Union[int, float, str]]]]]
+    inputs: Dict[str, List[Any]]
     format = "tf-inputs"
     @validator("inputs")
     def check_input_format(cls, v):
@@ -44,7 +44,7 @@ class DataInputModelInputs(BaseModel):
         return v
 
 class DataInputModelInstances(BaseModel):
-    instances: List[Dict[str, Union[int, float, str, List[Union[int, float, str]]]]]
+    instances: List[Dict[str, Any]]
     format = "tf-instances"
     @validator("instances")
     def check_instance_format(cls, v):
