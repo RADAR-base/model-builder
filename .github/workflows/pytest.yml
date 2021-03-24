@@ -10,7 +10,7 @@ on:
       - main
 
 jobs:
-  build:
+  model-builder-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -18,11 +18,30 @@ jobs:
         uses: actions/setup-python@v1
         with:
           python-version: 3.8
+      - name: Go to model-builder submodule
+        run: cd model-builder
       - name: Install linux dependencies
         run: sudo apt-get install postgresql
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r model-builder/requirements.txt
+          pip install -r requirements.txt
+      - name: Run tests with pytest
+        run: pytest
+
+  model-invocation-endpoint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Python 3
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Go to model-invocation-endpoint submodule
+        run: cd model-invocation-endpoint
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
       - name: Run tests with pytest
         run: pytest
