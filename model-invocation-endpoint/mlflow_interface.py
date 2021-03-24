@@ -1,5 +1,4 @@
 import mlflow
-from mlflow.tracking import MlflowClient
 from fastapi import HTTPException
 from dotenv import load_dotenv
 import os
@@ -11,7 +10,7 @@ class MlflowInterface():
     def __init__(self):
         self.load_env_file()
         self.mlflow_tracking_uri, self.mlflow_registry_uri = self.get_mlflow_uris()
-        self.client = MlflowClient(tracking_uri=self.mlflow_tracking_uri, registry_uri=self.mlflow_registry_uri)
+        self.client = mlflow.tracking.MlflowClient(tracking_uri=self.mlflow_tracking_uri, registry_uri=self.mlflow_registry_uri)
 
     def load_env_file(self):
         load_dotenv('.env')

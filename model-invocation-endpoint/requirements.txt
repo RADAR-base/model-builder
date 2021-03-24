@@ -6,3 +6,4 @@ fastapi
 uvicorn[standard]
 python-dotenv
 boto3
+pytest

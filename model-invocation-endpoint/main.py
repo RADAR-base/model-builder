@@ -3,11 +3,11 @@ from fastapi import FastAPI, HTTPException, Header, Query
 from fastapi.responses import PlainTextResponse
 from data_input_format import DataInputModel
 
-from mlflow_interface import MlflowInterface
+import mlflow_interface
 import mlflow
 
 app = FastAPI()
-mlflow_interface = MlflowInterface()
+mlflow_interface = mlflow_interface.MlflowInterface()
 
 @app.get("/model")
 def get_all_experiments():
