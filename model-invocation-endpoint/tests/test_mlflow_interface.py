@@ -55,7 +55,8 @@ class TestMlflowInterface(unittest.TestCase):
                       "alpha": "0.5",
                       "l1_ratio": "0.6"
                     }
-                  }
+                  },
+                  },
                 ]
 
     @mock.patch("mlflow.tracking.MlflowClient")
@@ -76,7 +77,7 @@ class TestMlflowInterface(unittest.TestCase):
         mock_mlflow_client.return_value.get_experiment_by_name.return_value = self.experiments[0]
         mock_mlflow_client.return_value.search_runs.return_value = self.experiment_1_details
         mlflow_interface_obj = mlflow_interface.MlflowInterface()
-        self.assertEqual(mlflow_interface_obj.get_model_version_info("experiment_1", 1), self.experiment_1_details[0])
+        self.assertEqual(mlflow_interface_obj.get_model_version_info("experiment_1", 1), self.experiment_1_details[1])
 
     @mock.patch("mlflow_interface.MlflowInterface._mlflow_inference")
     @mock.patch("mlflow.tracking.MlflowClient")
