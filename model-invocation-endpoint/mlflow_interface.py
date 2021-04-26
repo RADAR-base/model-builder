@@ -8,7 +8,7 @@ import pandas as pd
 import sys
 sys.path.insert(1, '../model-builder')
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
-
+import importlib
 class MlflowInterface():
 
     def __init__(self):
@@ -78,7 +78,10 @@ class MlflowInterface():
 
     def _get_data_from_postgres(self, metadata):
         self.postgres.connect()
-        query = self._make_query_from_metadata(metadata)
+        module = importlib.import_module(f"..model_class.{metadata.classname}")
+        data_class = getattr(module, metadata.classname)
+        data_class_instance = data_class(metadata.user_id, metadata.participant_id)
+        query = data_class_instance.get_query()
         return self.postgres.get_response(query)
 
 
