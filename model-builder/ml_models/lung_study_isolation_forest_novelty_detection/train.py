@@ -54,7 +54,7 @@ if __name__ == "__main__":
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     lung_study = LungStudy()
-    dbconn = PostgresPandasWrapper(dbname="features", user="radar", password="bulgaria:STICK:cause",host="127.0.0.1", port=5434)
+    dbconn = PostgresPandasWrapper(dbname="features", user="", password="",host="127.0.0.1", port=5434)
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
     query = lung_study.get_query_for_training()
