@@ -28,8 +28,9 @@ def set_env_vars():
     os.environ["AWS_SECRET_ACCESS_KEY"] = ""
 
 class IsolationForestWrapper(mlflow.pyfunc.PythonModel):
-    def __init__(self, model):
+    def __init__(self, model, threshold):
           self.model = model
+          self.threshold = threshold
 
     def predict(self, context, model_input):
         self.model.predict(model_input)
@@ -54,7 +55,7 @@ if __name__ == "__main__":
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     lung_study = LungStudy()
-    dbconn = PostgresPandasWrapper(dbname="features", user="", password="",host="127.0.0.1", port=5434)
+    dbconn = PostgresPandasWrapper(dbname="features", user="radar", password="bulgaria:STICK:cause",host="127.0.0.1", port=5434)
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
     query = lung_study.get_query_for_training()
@@ -72,9 +73,10 @@ if __name__ == "__main__":
         est.fit(train_x)
         #Returns -1 for outliers and 1 for inliers.
         detected_anamoly = est.predict(train_x)
-
+        threshold = min(est.score_samples(train_x))
 
         mlflow.log_param("n_estimator", n_estimator)
+        mlflow.log_param("Estimated Threshold", threshold)
         mlflow.log_metric("total_anamolies_detected", np.sum(detected_anamoly == -1))
 
-        mlflow.pyfunc.log_model(artifact_path="lung_study_isolation_forest_novelty_detection", python_model=IsolationForestWrapper(model=est,), conda_env=isolation_forest_conda_env)
+        mlflow.pyfunc.log_model(artifact_path="lung_study_isolation_forest_novelty_detection", python_model=IsolationForestWrapper(model=est, threshold=threshold), conda_env=isolation_forest_conda_env)

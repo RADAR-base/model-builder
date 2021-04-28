@@ -71,17 +71,13 @@ class MlflowInterface():
             df = pd.DataFrame(data.inputs)
         return df
 
-    def _make_query_from_metadata(self, metadata):
-        if metadata.columns is None:
-            return f"SELECT * FROM {metadata.tablename} WHERE time between {metadata.starttime} and {metadata.endtime}"
-        return ""
 
     def _get_data_from_postgres(self, metadata):
         self.postgres.connect()
-        module = importlib.import_module(f"..model_class.{metadata.classname}")
+        module = importlib.import_module(f"..model_class.{metadata.filename}")
         data_class = getattr(module, metadata.classname)
         data_class_instance = data_class(metadata.user_id, metadata.participant_id)
-        query = data_class_instance.get_query()
+        query = data_class_instance.get_query_for_prediction(metadata.user_id, metadata.participant_id, metadata.starttime, metadata.endtime)
         return self.postgres.get_response(query)
 
 
