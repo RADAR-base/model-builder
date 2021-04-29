@@ -5,6 +5,7 @@ class LungStudy(ModelClass):
 
     def __init__(self):
         super().__init__()
+        self.window_size = 5
         self.query_heart = '''SELECT "PROJECTID"  as pid, \
             "USERID" as uid, \
             "SOURCEID"  as sid,\
@@ -87,12 +88,50 @@ class LungStudy(ModelClass):
                             where uid = {user_id} AND pid = {project_id} AND (time between {starttime} and {endtime})'''
         return final_query
 
-    def preprocess_data(self, data):
-        prepared_data = data.drop(["pid", "sid", "uid", 'time'],axis=1 )
+    def _concat_aggregated_data(self, aggregated_data):
+        keys = aggregated_data.keys()
+        for hour in keys:
+            aggregated_data[hour] = aggregated_data[hour].reset_index(drop=True)
+            aggregated_data[hour].columns = [f"{column}_{hour}" for column in aggregated_data[hour].columns]
+        return pd.concat(aggregated_data.values(), axis=1)
+
+    def _aggregate(self, data):
+        columns = ['heartrate_count', 'heartrate_min', 'heartrate_max', 'heartrate_mean',
+                    'heartrate_std', 'heartrate_median', 'heartrate_model', 'heartrate_iqr',
+                    'heartrate_skew', 'body_battery_count', 'body_battery_min',
+                    'body_battery_max', 'body_battery_mean', 'body_battery_std',
+                    'body_battery_median', 'body_battery_model', 'body_battery_iqr',
+                    'body_battery_skew', 'pulse_count', 'pulse_min', 'pulse_max',
+                    'pulse_mean', 'pulse_std', 'pulse_median', 'pulse_model', 'pulse_iqr',
+                    'pulse_skew']
+        hours = data['window_end'].dt.hour.tolist()
+        aggregated_data = {}
+        for hour in range(24):
+            if hour in hours:
+                aggregated_data[hour] = data[data['window_end'].dt.hour == hour][columns]
+            else:
+                aggregated_data[hour] = pd.DataFrame(data=[[0] * len(columns)], columns=columns)
+        return self._concat_aggregated_data(aggregated_data)
+
+    def _aggregate_to_daily_data(self, prepared_data):
+        # This converts hourly data to  daily data
+        # How to handle missing daily data for each variables.
+        # Currently replacing all the mising hour data with zero.
+        prepared_data["window_end_date"] = prepared_data["window_end"].dt.date
+        aggregated_data = prepared_data.groupby(["uid", "window_end_date"]).apply(self._aggregate)
+        return aggregated_data.reset_index()
+
+    def _create_windowed_data(self, daily_aggregate_data):
+        # Take aggregated daily data as input and  return windowed input.
+        daily_aggregate_data.groupby("uid")
+
+    def preprocess_data(self, prepared_data):
         prepared_data["window_start"] = pd.to_datetime(prepared_data['window_start'],unit='ms')
         prepared_data["window_end"] =  pd.to_datetime(prepared_data['window_end'],unit='ms')
-        # Currently dropping window but might be usefull in the future.
-        prepared_data = prepared_data.drop(["window_start", "window_end"],axis=1 )
         # Handle missing (NA) data
         prepared_data = prepared_data.fillna(0)
-        return prepared_data
+        daily_aggregate_data = self._aggregate_to_daily_data(prepared_data)
+        #windowed_data = self._create_windowed_data(daily_aggregate_data)
+        # Currently dropping window but might be usefull in the future.
+        daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
+        return daily_aggregate_data
