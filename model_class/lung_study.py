@@ -66,28 +66,28 @@ class LungStudy(ModelClass):
         return final_query
 
 
-    def get_query_for_prediction(self, user_id, project_id, starttime, endtime):
+    def get_query_for_prediction(self, user_id, starttime, endtime):
 
         if starttime is None and endtime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
-                            where uid = {user_id} AND pid = {project_id}'''
+                            where uid = '{user_id}' '''
         elif starttime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
-                            where uid = {user_id} AND pid = {project_id} AND time >= {starttime}'''
+                            where uid = '{user_id}' AND time >= '{starttime}' '''
         elif endtime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
-                            where uid = {user_id} AND pid = {project_id} AND time < {endtime}'''
+                            where uid = '{user_id}' AND time < '{endtime}' '''
         else:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
-                            where uid = {user_id} AND pid = {project_id} AND (time between {starttime} and {endtime})'''
+                            where uid = '{user_id}' AND (time between '{starttime}' and '{endtime}')'''
         return final_query
 
     def _concat_aggregated_data(self, aggregated_data):

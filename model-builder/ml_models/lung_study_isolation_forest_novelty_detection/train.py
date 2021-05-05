@@ -33,8 +33,9 @@ class IsolationForestWrapper(mlflow.pyfunc.PythonModel):
           self.threshold = threshold
 
     def predict(self, context, model_input):
-        model_input = model_input.reshape(model_input.shape[0], -1)
-        self.model.predict(model_input)
+        raw_data, raw_data_index = model_input[0], model_input[1]
+        raw_data = raw_data.reshape(raw_data.shape[0], -1)
+        return self.model.predict(raw_data).tolist()
 
 
 if __name__ == "__main__":
@@ -56,7 +57,7 @@ if __name__ == "__main__":
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     lung_study = LungStudy()
-    dbconn = PostgresPandasWrapper(dbname="", user="", password="",host="", port=)
+    dbconn = PostgresPandasWrapper(dbname="features", user="radar", password="bulgaria:STICK:cause",host="127.0.0.1", port=5434)
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
     query = lung_study.get_query_for_training()
@@ -76,7 +77,7 @@ if __name__ == "__main__":
         #Returns -1 for outliers and 1 for inliers.
         detected_anamoly = est.predict(train_x)
         # Printing info about all the detected anamolys
-        print("Detected Anamolys: ")
+        print("Detected Anomalies: ")
         for i in np.where(detected_anamoly == -1)[0]:
             print(train_x_index[i])
 

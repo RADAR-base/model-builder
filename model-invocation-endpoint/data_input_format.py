@@ -63,7 +63,7 @@ DataInputModel = Union[DataInputModelSplit, DataInputModelInstances, DataInputMo
 class MetaDataModel(BaseModel):
     filename: str
     classname: str
-    starttime: datetime.datetime
-    endtime: datetime.datetime
-    project_id: str
+    dbname: str
+    starttime: datetime.datetime = None
+    endtime: datetime.datetime = None
     user_id: str
