@@ -18,6 +18,13 @@ from dataloader.querybuilder import QueryBuilder
 import mlflow
 import mlflow.sklearn
 
+class ElasticNetWrapper(mlflow.pyfunc.PythonModel):
+    def __init__(self, model):
+          self.model = model
+
+    def predict(self, context, model_input):
+        self.model.predict(model_input)
+
 def set_env_vars():
     os.environ["MLFLOW_URL"] = "http://172.16.1.21:5000"
     os.environ["MLFLOW_TRACKING_URI"] = "http://172.16.1.21:5000"
@@ -42,6 +49,11 @@ if __name__ == "__main__":
     parser.add_argument("--l1-ratio", default=0.2)
     parser.add_argument("--num-iterations", default=1000)
     args = parser.parse_args()
+
+    linear_regression_prediction_conda={'channels': ['defaults'],
+     'name':'linear_regression_prediction_conda',
+     'dependencies': [ 'python=3.8', 'pip',
+     {'pip':['mlflow','scikit-learn','cloudpickle','pandas','numpy']}]}
 
     # Importing query builder
     querybuilder = QueryBuilder(tablename="wine_dataset")
@@ -93,4 +105,4 @@ if __name__ == "__main__":
         mlflow.log_metric("r2", r2)
         mlflow.log_metric("mae", mae)
 
-        mlflow.sklearn.log_model(lr, "elastic_net_wine_model")
+        mlflow.pyfunc.log_model(artifact_path="elastic_net_wine_model", python_model=ElasticNetWrapper(model=lr,), conda_env=linear_regression_prediction_conda)
