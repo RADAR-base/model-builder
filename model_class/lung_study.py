@@ -1,5 +1,7 @@
 from model_class import  ModelClass
 import pandas as pd
+import datetime
+import numpy as np
 
 class LungStudy(ModelClass):
 
@@ -123,7 +125,31 @@ class LungStudy(ModelClass):
 
     def _create_windowed_data(self, daily_aggregate_data):
         # Take aggregated daily data as input and  return windowed input.
-        daily_aggregate_data.groupby("uid")
+        # TODO: What to do when data for a day is missing? - currently just skipping it
+        daily_aggregate_data["window_end_date"] = pd.to_datetime(daily_aggregate_data["window_end_date"])
+        daily_aggregate_data = daily_aggregate_data.sort_values(["uid", "window_end_date"])
+        indexer = {}
+        index_record = 0
+        dataset = []
+        for uid in daily_aggregate_data["uid"].unique():
+            df = daily_aggregate_data[daily_aggregate_data["uid"] == uid]
+            diff_values = df["window_end_date"] - df["window_end_date"].iloc[0]
+            last_value = None
+            current_window_size = None
+            for idx, value  in enumerate(diff_values):
+                if last_value is None or value - last_value != datetime.timedelta(days=1):
+                    last_value = value
+                    current_window_size = 1
+                else:
+                    if current_window_size + 1 == self.window_size:
+                        dataset.append(df.iloc[idx - self.window_size + 1: idx + 1, 3:].values)
+                        indexer[index_record] = (df.iloc[idx, 0], df.iloc[idx, 1])
+                        index_record += 1
+                        last_value = value
+                    else:
+                        last_value = value
+                        current_window_size += 1
+        return np.array(dataset), indexer
 
     def preprocess_data(self, prepared_data):
         prepared_data["window_start"] = pd.to_datetime(prepared_data['window_start'],unit='ms')
@@ -131,7 +157,7 @@ class LungStudy(ModelClass):
         # Handle missing (NA) data
         prepared_data = prepared_data.fillna(0)
         daily_aggregate_data = self._aggregate_to_daily_data(prepared_data)
-        #windowed_data = self._create_windowed_data(daily_aggregate_data)
+        windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
         # Currently dropping window but might be usefull in the future.
-        daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
-        return daily_aggregate_data
+        # daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
+        return windowed_data, windowed_data_index

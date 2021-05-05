@@ -33,6 +33,7 @@ class IsolationForestWrapper(mlflow.pyfunc.PythonModel):
           self.threshold = threshold
 
     def predict(self, context, model_input):
+        model_input = model_input.reshape(model_input.shape[0], -1)
         self.model.predict(model_input)
 
 
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     lung_study = LungStudy()
-    dbconn = PostgresPandasWrapper(dbname="", user="", password="",host="127.0.0.1", port=)
+    dbconn = PostgresPandasWrapper(dbname="", user="", password="",host="", port=)
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
     query = lung_study.get_query_for_training()
@@ -67,12 +68,18 @@ if __name__ == "__main__":
     mlflow.set_experiment("lung_study_isolation_forest_novelty_detection")
 
     n_estimator = args.n_estimator
-    train_x = lung_study.preprocess_data(data)
+    train_x, train_x_index = lung_study.preprocess_data(data)
+    train_x = train_x.reshape(train_x.shape[0], -1)
     with mlflow.start_run():
         est = IsolationForest(n_estimators=n_estimator)
         est.fit(train_x)
         #Returns -1 for outliers and 1 for inliers.
         detected_anamoly = est.predict(train_x)
+        # Printing info about all the detected anamolys
+        print("Detected Anamolys: ")
+        for i in np.where(detected_anamoly == -1)[0]:
+            print(train_x_index[i])
+
         threshold = min(est.score_samples(train_x))
 
         mlflow.log_param("n_estimator", n_estimator)
