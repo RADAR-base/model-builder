@@ -9,8 +9,8 @@ dependencies:
     - mlflow
     - -r file:../../requirements.txt
 variables:
-  MLFLOW_URL: http://172.16.1.21:5000
-  MLFLOW_TRACKING_URI: http://172.16.1.21:5000
-  MLFLOW_S3_ENDPOINT_URL: http://172.16.1.21:9000
+  MLFLOW_URL: http://127.0.0.1:5000
+  MLFLOW_TRACKING_URI: http://127.0.0.1:5000
+  MLFLOW_S3_ENDPOINT_URL: http://127.0.0.1:9000
   AWS_ACCESS_KEY_ID:
   AWS_SECRET_ACCESS_KEY:

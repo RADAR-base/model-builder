@@ -7,8 +7,9 @@ import json
 import pandas as pd
 import sys
 sys.path.insert(1, '../model-builder')
+sys.path.insert(1, '..')
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
-
+import importlib
 class MlflowInterface():
 
     def __init__(self):
@@ -16,7 +17,6 @@ class MlflowInterface():
         self.mlflow_tracking_uri, self.mlflow_registry_uri = self.get_mlflow_uris()
         self.client = MlflowClient(tracking_uri=self.mlflow_tracking_uri, registry_uri=self.mlflow_registry_uri)
         self._get_postgres_data()
-        self.postgresql= PostgresPandasWrapper(self.postgres_data)
 
     def load_env_file(self):
         load_dotenv('.env')
@@ -71,15 +71,16 @@ class MlflowInterface():
             df = pd.DataFrame(data.inputs)
         return df
 
-    def _make_query_from_metadata(self, metadata):
-        if metadata.columns is None:
-            return f"SELECT * FROM {metadata.tablename} WHERE time between {metadata.starttime} and {metadata.endtime}"
-        return ""
 
     def _get_data_from_postgres(self, metadata):
-        self.postgres.connect()
-        query = self._make_query_from_metadata(metadata)
-        return self.postgres.get_response(query)
+        postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_data)
+        postgres.connect()
+        module = importlib.import_module(f"model_class.{metadata.filename}")
+        data_class = getattr(module, metadata.classname)
+        data_class_instance = data_class()
+        query = data_class_instance.get_query_for_prediction(metadata.user_id, metadata.starttime, metadata.endtime)
+        raw_data = postgres.get_response(query)
+        return data_class_instance.preprocess_data(raw_data)
 
 
     def get_inference(self, name, version, data):
