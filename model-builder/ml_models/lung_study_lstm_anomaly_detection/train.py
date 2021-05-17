@@ -8,7 +8,6 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.ensemble import IsolationForest
-from mlflow.tracking import MlflowClient
 # Get the current working directory
 sys.path.append(os.path.abspath('model-builder/'))
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
@@ -46,7 +45,7 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    criterion = nn.L1Loss(reduction='sum').to(device)
+    criterion = nn.MSELoss(reduction='mean').to(device)
     history = dict(train_loss=[], val_loss=[])
     for epoch in range(1 , n_epochs + 1):
         model = model.train()
@@ -54,11 +53,11 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
         train_losses = []
 
         for seq_true in train_dataset:
-            optimizer.zero_grad()
-
             seq_true = seq_true.to(device)
+            y_true = seq_true[:,-1,:]
+            optimizer.zero_grad()
             seq_pred = model(seq_true)
-            loss = criterion(seq_pred, seq_true)
+            loss = criterion(seq_pred, y_true)
             loss.backward()
             optimizer.step()
 
@@ -68,11 +67,11 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
         model = model.eval()
         with torch.no_grad():
             for seq_true in val_dataset:
-
                 seq_true = seq_true.to(device)
+                y_true = seq_true[:,-1,:]
                 seq_pred = model(seq_true)
 
-                loss = criterion(seq_pred, seq_true)
+                loss = criterion(seq_pred, y_true)
 
                 val_losses.append(loss.item())
 
@@ -81,7 +80,6 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
         val_loss = np.mean(val_losses)
         log_scalar("training_loss", train_loss, step=epoch)
         mlflow.log_metric("validation_loss", val_loss, step=epoch)
-        mlflow.log_metric("test", epoch * 4, step=epoch)
         history['train_loss'].append(train_loss)
         history['val_loss'].append(val_loss)
 
@@ -110,8 +108,8 @@ if __name__ == "__main__":
     set_env_vars()
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_layers", default=5)
-    parser.add_argument("--latent_dim", default=256)
-    parser.add_argument("--epochs", default=8)
+    parser.add_argument("--latent_dim", default=128)
+    parser.add_argument("--epochs", default=100)
     parser.add_argument("--batch_size", default=8)
     parser.add_argument("--learning_rate", default=0.01)
     args = parser.parse_args()
@@ -126,7 +124,7 @@ if __name__ == "__main__":
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     lung_study = LungStudy()
-    dbconn = PostgresPandasWrapper()
+    dbconn = PostgresPandasWrapper(dbname="", user="", password="",host="", port=)
     dbconn.connect()
     #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
     query = lung_study.get_query_for_training()

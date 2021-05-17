@@ -19,23 +19,35 @@ class LSTM(nn.Module):
         self.input_feature_len = input_dimensionality
         self.input_dim: int = input_dim
         self.latent_dim: int = latent_dim
+        self.embedding_dim = 2* latent_dim
         self.num_layers: int = num_layers
-        self.encoder = torch.nn.LSTM(self.input_feature_len, self.latent_dim, self.num_layers)
-        self.decoder = torch.nn.LSTM(self.latent_dim, self.input_feature_len, self.num_layers)
+        self.encoder_1 = torch.nn.LSTM(self.input_feature_len, self.latent_dim, self.num_layers, batch_first=True)
+        self.relu_enc_1 = nn.ReLU()
+        self.encoder_2 = torch.nn.LSTM(self.latent_dim, self.embedding_dim, self.num_layers, batch_first=True)
+        self.relu_enc_2 = nn.ReLU()
+        self.decoder_1 = torch.nn.LSTM(self.embedding_dim, self.latent_dim, self.num_layers, batch_first=True)
+        self.relu_dec_1 = nn.ReLU()
+        self.decoder_2 = torch.nn.LSTM(self.latent_dim, self.input_feature_len, self.num_layers, batch_first=True)
 
-        nn.init.xavier_uniform(self.encoder.weight_ih_l0, gain=np.sqrt(2))
-        nn.init.xavier_uniform(self.decoder.weight_ih_l0, gain=np.sqrt(2))
+        #nn.init.xavier_uniform(self.encoder_1.weight_ih_l0, gain=np.sqrt(2))
+        #nn.init.xavier_uniform(self.encoder_2.weight_ih_l0, gain=np.sqrt(2))
+        #nn.init.xavier_uniform(self.decoder_1.weight_ih_l0, gain=np.sqrt(2))
+        #nn.init.xavier_uniform(self.decoder_2.weight_ih_l0, gain=np.sqrt(2))
 
-    def forward(self, input):
-        input = input.float()
+    def forward(self, x):
+        x = x.float()
         # Flatten 2d (or 3d or however many you specified in constructor)
         #input = input.reshape(input.shape[: -self.input_dimensionality] + (-1,))
 
         # Rest goes as in my previous answer
-        encoded, _ = self.encoder(input)
-        y, _ = self.decoder(encoded)
-
-        return y
+        x, _ = self.encoder_1(x)
+        x = self.relu_enc_1(x)
+        x, _ = self.encoder_2(x)
+        x = self.relu_enc_2(x)
+        x, _ = self.decoder_1(x)
+        x = self.relu_dec_1(x)
+        x, _ = self.decoder_2(x)
+        return x[:,-1,:]
 
 class LSTMWrapper(mlflow.pyfunc.PythonModel):
 
@@ -65,20 +77,13 @@ class LSTMWrapper(mlflow.pyfunc.PythonModel):
     def predict(self, context, model_input):
         raw_data, raw_data_index = model_input[0], model_input[1]
         prediction_dataset = LungStudyDataset(raw_data, raw_data_index)
-        prediction_dataloader = DataLoader(prediction_dataset, batch_size=8)
+        prediction_dataloader = DataLoader(prediction_dataset, batch_size=4)
         return self._predict(prediction_dataloader).tolist()
 
-    def predict(self, context, input_df):
-        import numpy as np
-        with torch.no_grad():
-            input_tensor = torch.from_numpy(
-                input_df.values.reshape(-1, 28, 28).astype(np.float32)).to('cpu')
-            model_results = self.model(input_tensor).numpy()
-            return np.power(np.e, model_results)
 
 class LungStudyDataset(Dataset):
     def __init__(self, data, data_index):
-        self.data = data
+        self.data = torch.FloatTensor(data)
         self.data_index = data_index
 
     def __len__(self):
