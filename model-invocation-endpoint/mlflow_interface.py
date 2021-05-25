@@ -56,6 +56,8 @@ class MlflowInterface():
             return all_runs[len(all_runs) - version]
 
     def _mlflow_inference(self, model_run, df):
+        if df is None:
+            raise HTTPException(404, f"No data available for inference")
         loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
         return list(loaded_model.predict(df))
 
