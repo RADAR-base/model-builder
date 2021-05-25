@@ -1,8 +1,12 @@
 FROM python:3.8
 
-COPY . ./app
+COPY . ./model-builder/app
 
-WORKDIR app
+COPY ../model-builder ./model-builder/model-builder
+
+COPY ../model_class ./model-builder/model_class
+
+WORKDIR model-builder/app
 
 RUN pip install -r requirements.txt
 
