@@ -45,7 +45,7 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
     model.train()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    criterion = nn.MSELoss(reduction='mean').to(device)
+    criterion = nn.L1Loss(reduction='mean').to(device)
     history = dict(train_loss=[], val_loss=[])
     for epoch in range(1 , n_epochs + 1):
         model = model.train()
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_layers", default=5)
     parser.add_argument("--latent_dim", default=128)
-    parser.add_argument("--epochs", default=100)
+    parser.add_argument("--epochs", default=2)
     parser.add_argument("--batch_size", default=8)
     parser.add_argument("--learning_rate", default=0.01)
     args = parser.parse_args()
@@ -117,7 +117,7 @@ if __name__ == "__main__":
     lstm_conda_env={'channels': ['defaults'],
      'name':'lstm_conda_env',
      'dependencies': [ 'python=3.8', 'pip',
-     {'pip':['mlflow','pytorch','cloudpickle','pandas','numpy', 'torchvision']}]}
+     {'pip':['mlflow','torch==1.7','cloudpickle','pandas','numpy', 'torchvision']}]}
 
     # Importing query builder
     querybuilder = QueryBuilder(tablename="")

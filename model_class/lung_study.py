@@ -102,19 +102,19 @@ class LungStudy(ModelClass):
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            whereNATURAL LEFT JOIN ( {self.grouped_activity}) as activity \ uid = '{user_id}' AND time >= '{starttime}' '''
+                            where uid = '{user_id}' AND time < '{endtime}' '''
         elif endtime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND time < '{endtime}' '''
+                            where uid = '{user_id}' AND time >= '{starttime}' '''
         else:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND (time between '{starttime}' and '{endtime}')'''
+                            where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
         return final_query
 
     def _concat_aggregated_data(self, aggregated_data):
@@ -155,6 +155,7 @@ class LungStudy(ModelClass):
     def _create_windowed_data(self, daily_aggregate_data):
         # Take aggregated daily data as input and  return windowed input.
         # TODO: What to do when data for a day is missing? - currently just skipping it
+        print(daily_aggregate_data)
         daily_aggregate_data = daily_aggregate_data.sort_values(["uid", "date"])
         indexer = {}
         index_record = 0
@@ -181,9 +182,14 @@ class LungStudy(ModelClass):
 
     def preprocess_data(self, prepared_data):
         # Handle missing (NA) data
+        if prepared_data.empty:
+            return None
         prepared_data = prepared_data.fillna(0)
+        print(prepared_data)
         daily_aggregate_data = self._aggregate_to_daily_data(prepared_data)
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
+        if windowed_data.shape[0] == 0:
+            return None
         # Currently dropping window but might be usefull in the future.
         # daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
         return windowed_data, windowed_data_index
