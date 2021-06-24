@@ -60,7 +60,7 @@ class DataInputModelInstances(BaseModel):
 
 DataInputModel = Union[DataInputModelSplit, DataInputModelInstances, DataInputModelInputs, DataInputModelRecord]
 
-class MetaDataModel(BaseModel):
+class DataLoaderClass(BaseModel):
     filename: str
     classname: str
     dbname: str

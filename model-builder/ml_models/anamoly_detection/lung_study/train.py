@@ -6,16 +6,15 @@ import argparse
 import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
-from sklearn.ensemble import IsolationForest
+from dotenv import load_dotenv
 # Get the current working directory
 sys.path.append(os.path.abspath('model-builder/'))
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
 from dataloader.querybuilder import QueryBuilder
 sys.path.append(os.path.abspath('.'))
 from model_class.lung_study import  LungStudy
-from lstm import LSTM, LSTMWrapper, LungStudyDataset
-
+from ml_models.anamoly_detection.lstm import LSTM, LSTMLungStudyWrapper, LSTMAnomalyDataset
+from ml_models.anamoly_detection.utils import fig2data, result_plot
 from torch.utils.data import Subset
 from sklearn.model_selection import train_test_split
 import mlflow
@@ -24,21 +23,46 @@ from torch.utils.data import DataLoader
 import torch
 from torch import nn
 import time
-from utils import fig2data, result_plot
 
 import mlflow.pyfunc
 
-def set_env_vars():
-    os.environ["MLFLOW_URL"] = "http://127.0.0.1:5000"
-    os.environ["MLFLOW_TRACKING_URI"] = "http://127.0.0.1:5000"
-    os.environ["MLFLOW_S3_ENDPOINT_URL"] = "http://127.0.0.1:9000"
-    os.environ["AWS_ACCESS_KEY_ID"] = ""
-    os.environ["AWS_SECRET_ACCESS_KEY"] = ""
 
 
-def log_scalar(name, value, step):
-    """Log a scalar value to MLflow"""
-    mlflow.log_metric(name, value, step=step)
+def argparser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--num_layers", default=5)
+    parser.add_argument("--latent_dim", default=128)
+    parser.add_argument("--epochs", default=50)
+    parser.add_argument("--batch_size", default=8)
+    parser.add_argument("--learning_rate", default=0.01)
+    args = parser.parse_args()
+    return args
+
+def get_postgres_data():
+        postgres_data = {}
+        postgres_data["user"] = os.environ.get('POSTGRES_USER')
+        postgres_data["password"] = os.environ.get('POSTGRES_PASS')
+        postgres_data["tablename"] = os.environ.get('POSTGRES_TABLENAME')
+        postgres_data["host"] = os.environ.get('POSTGRES_HOST')
+        postgres_data["port"] = os.environ.get('POSTGRES_PORT')
+        postgres_data["dbname"] = os.environ.get('POSTGRES_DBNAME')
+        return postgres_data
+
+def get_mlflow_uris():
+        return os.environ.get('MLFLOW_TRACKING_URI'), os.environ.get('MLFLOW_S3_ENDPOINT_URL'), os.environ.get('MLFLOW_EXPERIMENT_NAME')
+
+def import_data(lung_study):
+    postgres_data = get_postgres_data()
+    # Importing query builder
+    querybuilder = QueryBuilder(tablename=postgres_data["tablename"])
+    # Read the wine-quality data from the Postgres database using dataloader
+    # ADD DATABASE DETAILS HERE
+    dbconn =  PostgresPandasWrapper(dbname=postgres_data["dbname"], user=postgres_data["user"], password=postgres_data["password"],host=postgres_data["host"], port=postgres_data["port"])
+    dbconn.connect()
+    query = lung_study.get_query_for_training()
+    data = dbconn.get_response(query)
+    dbconn.disconnect()
+    return data
 
 def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
     model = model.to(device)
@@ -78,7 +102,7 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
         te = time.time()
         train_loss = np.mean(train_losses)
         val_loss = np.mean(val_losses)
-        log_scalar("training_loss", train_loss, step=epoch)
+        mlflow.log_metric("training_loss", train_loss, step=epoch)
         mlflow.log_metric("validation_loss", val_loss, step=epoch)
         history['train_loss'].append(train_loss)
         history['val_loss'].append(val_loss)
@@ -93,7 +117,7 @@ def train_val_dataset(dataset, dataset_index, val_split=0.25):
     val_dataset = Subset(dataset, val_idx)
     train_dataset_idx = Subset(dataset_index, train_idx)
     val_dataset_idx = Subset(dataset_index, val_idx)
-    return LungStudyDataset(train_dataset, train_dataset_idx), LungStudyDataset(val_dataset, val_dataset_idx)
+    return LSTMAnomalyDataset(train_dataset, train_dataset_idx), LSTMAnomalyDataset(val_dataset, val_dataset_idx)
 
 def get_device():
     if torch.cuda.is_available():
@@ -101,39 +125,21 @@ def get_device():
     else:
         return "cpu"
 
-if __name__ == "__main__":
-    warnings.filterwarnings("ignore")
+def main():
     np.random.seed(42)
-
-    set_env_vars()
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--num_layers", default=5)
-    parser.add_argument("--latent_dim", default=128)
-    parser.add_argument("--epochs", default=2)
-    parser.add_argument("--batch_size", default=8)
-    parser.add_argument("--learning_rate", default=0.01)
-    args = parser.parse_args()
+    args = argparser()
+    load_dotenv('model-builder/ml_models/anamoly_detection/lung_study/.env')
 
     lstm_conda_env={'channels': ['defaults'],
      'name':'lstm_conda_env',
      'dependencies': [ 'python=3.8', 'pip',
-     {'pip':['mlflow','torch==1.7','cloudpickle','pandas','numpy', 'torchvision']}]}
+     {'pip':['mlflow','torch==1.7.1','cloudpickle','pandas','numpy', 'torchvision']}]}
 
-    # Importing query builder
-    querybuilder = QueryBuilder(tablename="")
-    # Read the wine-quality data from the Postgres database using dataloader
-    # ADD DATABASE DETAILS HERE
     lung_study = LungStudy()
-    dbconn = PostgresPandasWrapper(dbname="", user="", password="",host="", port=)
-    dbconn.connect()
-    #print(dbconn.get_response(cols=["*"], dataset="wine_dataset"))
-    query = lung_study.get_query_for_training()
-    data = dbconn.get_response(query)
-    dbconn.disconnect()
-
-    mlflow.set_tracking_uri("http://127.0.0.1:5000")
-    #Set experiment
-    mlflow.set_experiment("lung_study_lstm_anomaly_detection")
+    data = import_data(lung_study)
+    mlflow_tracking_uri, mlflow_registry_uri, mlflow_experiment_name = get_mlflow_uris()
+    mlflow.set_tracking_uri(mlflow_tracking_uri)
+    mlflow.set_experiment(mlflow_experiment_name)
 
     dataset, dataset_index = lung_study.preprocess_data(data)
 
@@ -163,4 +169,7 @@ if __name__ == "__main__":
         mlflow.log_image(fig2data(result_plot(history)), "result_plot.png")
         mlflow.log_param("Estimated Threshold", threshold)
 
-        mlflow.pyfunc.log_model(artifact_path="lung_study_lstm_anomaly_detection", python_model=LSTMWrapper(model=lstm, threshold=threshold), conda_env=lstm_conda_env, code_path=["model-builder/ml_models/lung_study_lstm_anomaly_detection/lstm.py"])
+        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=LSTMLungStudyWrapper(model=lstm, threshold=threshold), conda_env=lstm_conda_env, code_path=["model-builder/ml_models/anamoly_detection/lstm.py"])
+
+if __name__ == "__main__":
+    main()

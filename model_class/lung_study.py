@@ -155,7 +155,6 @@ class LungStudy(ModelClass):
     def _create_windowed_data(self, daily_aggregate_data):
         # Take aggregated daily data as input and  return windowed input.
         # TODO: What to do when data for a day is missing? - currently just skipping it
-        print(daily_aggregate_data)
         daily_aggregate_data = daily_aggregate_data.sort_values(["uid", "date"])
         indexer = {}
         index_record = 0
@@ -185,7 +184,6 @@ class LungStudy(ModelClass):
         if prepared_data.empty:
             return None
         prepared_data = prepared_data.fillna(0)
-        print(prepared_data)
         daily_aggregate_data = self._aggregate_to_daily_data(prepared_data)
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
         if windowed_data.shape[0] == 0:

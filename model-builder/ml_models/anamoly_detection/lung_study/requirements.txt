@@ -1,0 +1,7 @@
+torch==1.7.1
+pandas
+numpy
+torchvision
+matplotlib
+python-dotenv
+mlflow

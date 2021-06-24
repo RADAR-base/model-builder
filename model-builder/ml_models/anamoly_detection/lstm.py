@@ -33,15 +33,14 @@ class LSTM(nn.Module):
         self.relu_dec_2 = nn.ReLU()
         self.output_layer = nn.Linear(self.latent_dim * self.seq_len, self.input_feature_len)
 
-        nn.init.xavier_uniform(self.encoder_1.weight_ih_l0, gain=np.sqrt(2))
-        nn.init.xavier_uniform(self.encoder_2.weight_ih_l0, gain=np.sqrt(2))
-        nn.init.xavier_uniform(self.decoder_1.weight_ih_l0, gain=np.sqrt(2))
-        nn.init.xavier_uniform(self.decoder_2.weight_ih_l0, gain=np.sqrt(2))
+        nn.init.xavier_uniform_(self.encoder_1.weight_ih_l0, gain=np.sqrt(2))
+        nn.init.xavier_uniform_(self.encoder_2.weight_ih_l0, gain=np.sqrt(2))
+        nn.init.xavier_uniform_(self.decoder_1.weight_ih_l0, gain=np.sqrt(2))
+        nn.init.xavier_uniform_(self.decoder_2.weight_ih_l0, gain=np.sqrt(2))
 
     def forward(self, x):
         x = x.float()
         batch_size = x.shape[0]
-        print(x.shape)
         x, _ = self.encoder_1(x)
         x = self.relu_enc_1(x)
         x, (hidden_n, _) = self.encoder_2(x)
@@ -56,7 +55,7 @@ class LSTM(nn.Module):
         x = self.output_layer(x)
         return x
 
-class LSTMWrapper(mlflow.pyfunc.PythonModel):
+class LSTMLungStudyWrapper(mlflow.pyfunc.PythonModel):
 
     def __init__(self, model, threshold):
           self.model = model
@@ -85,12 +84,12 @@ class LSTMWrapper(mlflow.pyfunc.PythonModel):
 
     def predict(self, context, model_input):
         raw_data, raw_data_index = model_input[0], model_input[1]
-        prediction_dataset = LungStudyDataset(raw_data, raw_data_index)
+        prediction_dataset = LSTMAnomalyDataset(raw_data, raw_data_index)
         prediction_dataloader = DataLoader(prediction_dataset, batch_size=4)
         return self._predict(prediction_dataloader)
 
 
-class LungStudyDataset(Dataset):
+class LSTMAnomalyDataset(Dataset):
     def __init__(self, data, data_index):
         self.data = torch.FloatTensor(data)
         self.data_index = data_index
