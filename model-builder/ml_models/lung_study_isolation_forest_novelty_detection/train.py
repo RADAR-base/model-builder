@@ -50,18 +50,17 @@ def get_postgres_data():
 def get_mlflow_uris():
         return os.environ.get('MLFLOW_TRACKING_URI'), os.environ.get('MLFLOW_S3_ENDPOINT_URL'), os.environ.get('MLFLOW_EXPERIMENT_NAME')
 
-def import_data(lung_study):
+def import_data():
+    lung_study = LungStudy()
     postgres_data = get_postgres_data()
-    # Importing query builder
-    querybuilder = QueryBuilder(tablename=postgres_data["tablename"])
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     dbconn =  PostgresPandasWrapper(dbname=postgres_data["dbname"], user=postgres_data["user"], password=postgres_data["password"],host=postgres_data["host"], port=postgres_data["port"])
     dbconn.connect()
-    query = lung_study.get_query_for_training()
-    data = dbconn.get_response(query)
+    queries = lung_study.get_query_for_training()
+    data = dbconn.get_response(queries)
     dbconn.disconnect()
-    return data
+    return lung_study.preprocess_data(data)
 
 def main():
     np.random.seed(42)
@@ -73,15 +72,13 @@ def main():
      'dependencies': [ 'python=3.8', 'pip',
      {'pip':['mlflow','scikit-learn','cloudpickle','pandas','numpy']}]}
 
-    lung_study = LungStudy()
-    data = import_data(lung_study)
     mlflow_tracking_uri, mlflow_registry_uri, mlflow_experiment_name = get_mlflow_uris()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     #Set experiment
     mlflow.set_experiment(mlflow_experiment_name)
 
     n_estimator = args.n_estimator
-    train_x, train_x_index = lung_study.preprocess_data(data)
+    train_x, train_x_index =  import_data()
     train_x = train_x.reshape(train_x.shape[0], -1)
     with mlflow.start_run():
         est = IsolationForest(n_estimators=n_estimator)

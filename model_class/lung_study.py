@@ -1,5 +1,6 @@
 from model_class import  ModelClass
 import pandas as pd
+from datetime import  timedelta
 import datetime
 import numpy as np
 
@@ -80,13 +81,32 @@ class LungStudy(ModelClass):
             as activity_steps from ({self.query_activity}) as query_activity \
             group by uid, date, hour'''
 
+        self.sleep_activity = f'''SELECT \
+            "userId" as uid, \
+            "projectId" as pid, \
+            "sleepLevel" as sleep_level, \
+            to_timestamp("startTime") as sleep_start_time, \
+            to_timestamp("endTime") as sleep_end_time, \
+            time as time\
+            from "push_garmin_sleep_level" as sleep_activity'''
+
+        self.cat_score_retrieve_query = f'''SELECT "PROJECTID"  as pid, \
+            "USERID" as uid, \
+            "SOURCEID"  as sid, \
+            to_timestamp("TIME"  / 1000 ) as time, \
+            extract(hour from to_timestamp("TIME" / 1000)) as hour,\
+            date(to_timestamp("TIME"  / 1000 ) ) as date,\
+            "CAT_SCORE" as cat_score \
+            from "QUESTIONNAIRE_CAT_SCORE_STREAM"'''
+
 
     def get_query_for_training(self):
         final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                         NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                         NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                         NATURAL LEFT JOIN ( {self.grouped_activity}) as activity'''
-        return final_query
+
+        return [final_query, self.sleep_activity, self.cat_score_retrieve_query]
 
 
     def get_query_for_prediction(self, user_id, starttime, endtime):
@@ -115,7 +135,9 @@ class LungStudy(ModelClass):
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
-        return final_query
+        cat_score_retrieve_query_prediction = self.cat_score_retrieve_query
+        sleep_activity_prediction = self.sleep_activity
+        return [final_query, sleep_activity_prediction, cat_score_retrieve_query_prediction]
 
     def _concat_aggregated_data(self, aggregated_data):
         keys = aggregated_data.keys()
@@ -152,6 +174,45 @@ class LungStudy(ModelClass):
         aggregated_data = prepared_data.groupby(["uid", "date"]).apply(self._aggregate)
         return aggregated_data.reset_index()
 
+    def _aggregate_sleep(self, row):
+        uid = row["uid"]
+        time = row["time"]
+        starttime = row['sleep_start_time']
+        endtime = row['sleep_end_time']
+        sleep_level = row['sleep_level']
+        start_hour = starttime.hour
+        end_hour = endtime.hour
+        if start_hour == end_hour:
+            return pd.DataFrame([[uid, starttime.date(), (endtime - starttime).seconds, sleep_level, start_hour]], columns=["uid", "date","duration", "sleep_level", "hour"])
+        else:
+            current_time = starttime
+            sleep_data = []
+            sleep_data.append([uid, current_time.date(), 3600 - starttime.minute * 60, sleep_level, start_hour])
+            current_hour = start_hour + 1 % 24
+            current_time += timedelta(seconds=3600 - starttime.minute * 60)
+            while(current_hour < end_hour):
+                sleep_data.append([uid, current_time.date(), 3600, sleep_level, current_hour])
+                current_hour =  (current_hour + 1) % 24
+                current_time += timedelta(seconds=3600 - starttime.minute * 60)
+            sleep_data.append([uid, endtime.date(), endtime.minute * 60, sleep_level, end_hour])
+            return pd.DataFrame(sleep_data, columns=["uid", "date","duration", "sleep_level", "hour"])
+
+    def _test_apply(self, row):
+        sleep_duration_dict =  row[["duration", "sleep_level"]].groupby("sleep_level").sum()["duration"].to_dict()
+        sleep_levels = ['light', 'rem', 'awake', 'deep', 'unmeasurable']
+        for level in sleep_levels:
+            if level not in sleep_duration_dict:
+                sleep_duration_dict[level] = 0
+        return pd.DataFrame([[sleep_duration_dict[level] for level in sleep_duration_dict]], columns=sleep_levels)
+
+    def _convert_sleep_data_to_hourly(self, sleep_data):
+        aggregated_sleep = sleep_data.apply(self._aggregate_sleep, axis=1)
+        aggregated_sleep = pd.concat(aggregated_sleep.values, axis=0).reset_index(drop=True)
+        print(aggregated_sleep)
+        hourly_sleep_data = aggregated_sleep.groupby(["uid", "date", "hour"]).apply(self._test_apply)
+        hourly_sleep_data = hourly_sleep_data.reset_index().drop("level_3", axis=1)
+        return hourly_sleep_data
+
     def _create_windowed_data(self, daily_aggregate_data):
         # Take aggregated daily data as input and  return windowed input.
         # TODO: What to do when data for a day is missing? - currently just skipping it
@@ -179,12 +240,14 @@ class LungStudy(ModelClass):
                         current_window_size += 1
         return np.array(dataset), indexer
 
-    def preprocess_data(self, prepared_data):
+    def preprocess_data(self, raw_data):
+        hourly_data, sleep_data, cat_score = raw_data
         # Handle missing (NA) data
-        if prepared_data.empty:
+        if hourly_data.empty:
             return None
-        prepared_data = prepared_data.fillna(0)
-        daily_aggregate_data = self._aggregate_to_daily_data(prepared_data)
+        hourly_data = hourly_data.fillna(0)
+        hourly_sleep_data = self._convert_sleep_data_to_hourly(sleep_data)
+        daily_aggregate_data = self._aggregate_to_daily_data(hourly_data)
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
         if windowed_data.shape[0] == 0:
             return None
