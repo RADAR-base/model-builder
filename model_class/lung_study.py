@@ -117,27 +117,33 @@ class LungStudy(ModelClass):
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' '''
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' '''
         elif starttime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND time < '{endtime}' '''
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time < '{endtime}' '''
         elif endtime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND time >= '{starttime}' '''
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime}' '''
         else:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
-        cat_score_retrieve_query_prediction = self.cat_score_retrieve_query
-        sleep_activity_prediction = self.sleep_activity
-        return [final_query, sleep_activity_prediction, cat_score_retrieve_query_prediction]
+
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
+
+        cat_score_retrieve_query = f'''SELECT * from ({self.cat_score_retrieve_query}) as cat_score where uid = '{user_id}' '''
+        print(sleep_activity_query, cat_score_retrieve_query)
+        return [final_query, sleep_activity_query, cat_score_retrieve_query]
 
     def _concat_aggregated_data(self, aggregated_data):
         keys = aggregated_data.keys()
@@ -211,7 +217,6 @@ class LungStudy(ModelClass):
     def _convert_sleep_data_to_hourly(self, sleep_data):
         aggregated_sleep = sleep_data.apply(self._aggregate_sleep, axis=1)
         aggregated_sleep = pd.concat(aggregated_sleep.values, axis=0).reset_index(drop=True)
-        print(aggregated_sleep)
         hourly_sleep_data = aggregated_sleep.groupby(["uid", "date", "hour"]).apply(self._test_apply)
         hourly_sleep_data = hourly_sleep_data.reset_index().drop("level_3", axis=1)
         return hourly_sleep_data

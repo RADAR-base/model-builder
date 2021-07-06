@@ -51,7 +51,8 @@ def get_postgres_data():
 def get_mlflow_uris():
         return os.environ.get('MLFLOW_TRACKING_URI'), os.environ.get('MLFLOW_S3_ENDPOINT_URL'), os.environ.get('MLFLOW_EXPERIMENT_NAME')
 
-def import_data(lung_study):
+def import_data():
+    lung_study = LungStudy()
     postgres_data = get_postgres_data()
     # Importing query builder
     querybuilder = QueryBuilder(tablename=postgres_data["tablename"])
@@ -62,7 +63,7 @@ def import_data(lung_study):
     query = lung_study.get_query_for_training()
     data = dbconn.get_response(query)
     dbconn.disconnect()
-    return data
+    return lung_study.preprocess_data(data)
 
 def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
     model = model.to(device)
@@ -135,13 +136,11 @@ def main():
      'dependencies': [ 'python=3.8', 'pip',
      {'pip':['mlflow','torch==1.7.1','cloudpickle','pandas','numpy', 'torchvision']}]}
 
-    lung_study = LungStudy()
-    data = import_data(lung_study)
     mlflow_tracking_uri, mlflow_registry_uri, mlflow_experiment_name = get_mlflow_uris()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     mlflow.set_experiment(mlflow_experiment_name)
 
-    dataset, dataset_index = lung_study.preprocess_data(data)
+    dataset, dataset_index = import_data()
 
     num_layers = args.num_layers
     latent_dim = args.latent_dim
