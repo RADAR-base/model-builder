@@ -148,7 +148,6 @@ class LungStudy(ModelClass):
 
     def _aggregate(self, data):
         # Quality check - using count
-        # Inclusion criterion - CAT > 5 not include that. if CAT score not available, go upto 7 previous day.else discard the data
         # Data Interpolation
         columns = ['heartrate_count', 'heartrate_min', 'heartrate_max', 'heartrate_mean',
                     'heartrate_std', 'heartrate_median', 'heartrate_model', 'heartrate_iqr',
@@ -157,7 +156,8 @@ class LungStudy(ModelClass):
                     'body_battery_median', 'body_battery_model', 'body_battery_iqr',
                     'body_battery_skew', 'pulse_count', 'pulse_min', 'pulse_max',
                     'pulse_mean', 'pulse_std', 'pulse_median', 'pulse_model', 'pulse_iqr',
-                    'pulse_skew', 'activity_duration', 'activity_distance', 'activity_calories', 'activity_steps']
+                    'pulse_skew', 'activity_duration', 'activity_distance', 'activity_calories', 'activity_steps',
+                    'light', 'rem', 'awake', 'deep', 'unmeasurable']
         hours = data['hour'].tolist()
         aggregated_data = {}
         for hour in range(24):
@@ -171,6 +171,9 @@ class LungStudy(ModelClass):
         # This converts hourly data to  daily data
         # How to handle missing daily data for each variables.
         # Currently replacing all the mising hour data with zero.
+
+        # Inclusion criterion - CAT > 5 not include that. if CAT score not available, go upto 7 previous day.else discard the data
+        prepared_data = prepared_data[prepared_data["cat_score"] <= 5]
         aggregated_data = prepared_data.groupby(["uid", "date"]).apply(self._aggregate)
         return aggregated_data.reset_index()
 
@@ -246,7 +249,17 @@ class LungStudy(ModelClass):
         if hourly_data.empty:
             return None
         hourly_data = hourly_data.fillna(0)
+        # Merging CAT data with hourly data.
+        hourly_data = hourly_data.merge(cat_score[["uid", "date", "cat_score"]], on=["uid", "date"], how="left")
+        hourly_data = hourly_data.sort_values(by=["uid", "date"]).reset_index(drop=True)
+        hourly_data["cat_score"] = hourly_data.groupby("uid")["cat_score"].ffill()
+        hourly_data.dropna(subset=["cat_score"]).reset_index(drop=True)
+        # Converting sleep data to hourly sleep data
         hourly_sleep_data = self._convert_sleep_data_to_hourly(sleep_data)
+        hourly_data["hour"] = hourly_data["hour"].astype(int)
+
+        # Merging hourly sleep data with hourly data
+        hourly_data = hourly_data.merge(hourly_sleep_data, on=["uid", "hour", "date"], how="left").fillna(0)
         daily_aggregate_data = self._aggregate_to_daily_data(hourly_data)
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
         if windowed_data.shape[0] == 0:
