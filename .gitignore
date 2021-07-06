@@ -6,3 +6,4 @@ __pycache__/
 .empty/
 mlruns/
 .env
+.DS_STORE

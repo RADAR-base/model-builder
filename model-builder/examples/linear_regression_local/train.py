@@ -17,6 +17,14 @@ from dataloader.querybuilder import QueryBuilder
 import mlflow
 import mlflow.sklearn
 
+
+class ElasticNetWrapper(mlflow.pyfunc.PythonModel):
+    def __init__(self, model):
+          self.model = model
+
+    def predict(self, context, model_input):
+        return self.model.predict(model_input)
+
 def eval_metrics(actual, pred):
     rmse = np.sqrt(mean_squared_error(actual, pred))
     mae = mean_absolute_error(actual, pred)
@@ -57,6 +65,10 @@ if __name__ == "__main__":
     alpha = float(args.alpha)
     l1_ratio = float(args.l1_ratio)
     num_iterations = int(args.num_iterations)
+    linear_regression_prediction_conda={'channels': ['defaults'],
+     'name':'linear_regression_prediction_conda',
+     'dependencies': [ 'python=3.8', 'pip',
+     {'pip':['mlflow','scikit-learn','cloudpickle','pandas','numpy']}]}
 
     with mlflow.start_run():
         lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=num_iterations)
@@ -77,4 +89,4 @@ if __name__ == "__main__":
         mlflow.log_metric("r2", r2)
         mlflow.log_metric("mae", mae)
 
-        mlflow.sklearn.log_model(lr, "elastic_net_wine_model")
+        mlflow.pyfunc.log_model(artifact_path="elastic_net_wine_model", python_model=ElasticNetWrapper(model=lr,), conda_env=linear_regression_prediction_conda)

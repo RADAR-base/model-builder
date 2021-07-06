@@ -1,8 +1,7 @@
-name: linear_regression_remote_example
+name: lung_study_isolation_forest_novelty_detection
 channels:
   - defaults
 dependencies:
   - pip:
     - -r file:requirements.txt
-    - mlflow
     - -r file:../../requirements.txt

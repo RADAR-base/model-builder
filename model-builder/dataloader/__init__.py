@@ -3,12 +3,12 @@ from typing import List
 
 class PostgresWrapper(ABC):
 
-    def __init__(self, **args):
-        self.user = args.get('user', 'postgres')
-        self.password = args.get('password', "")
-        self.port = args.get('port', 5432)
-        self.dbname = args.get('dbname', 'opendb')
-        self.host = args.get('host', 'localhost')
+    def __init__(self, **kwargs):
+        self.user = kwargs.get('user', 'postgres')
+        self.password = kwargs.get('password', "")
+        self.port = kwargs.get('port', 5432)
+        self.dbname = kwargs.get('dbname', 'opendb')
+        self.host = kwargs.get('host', 'localhost')
         self.connection = None
 
     @abstractmethod
@@ -22,10 +22,6 @@ class PostgresWrapper(ABC):
     @abstractmethod
     def save_response(self, response, filename):
         pass
-
-    def get_and_save_response(self, query: str, filename: str):
-        response = self.get_response(query)
-        self.save_response(response,filename)
 
     @abstractmethod
     def disconnect(self):
