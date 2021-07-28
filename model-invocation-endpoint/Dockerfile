@@ -1,12 +1,12 @@
 FROM python:3.8
 
-COPY . ./model-builder/app
+COPY model-builder app/model-builder
 
-COPY ../model-builder ./model-builder/model-builder
+COPY model_class app/model_class
 
-COPY ../model_class ./model-builder/model_class
+COPY model-invocation-endpoint app/model-invocation-endpoint
 
-WORKDIR model-builder/app
+WORKDIR app/model-invocation-endpoint
 
 RUN pip install -r requirements.txt
 
