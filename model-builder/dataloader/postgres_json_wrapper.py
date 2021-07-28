@@ -27,14 +27,18 @@ class PostgresJsonWrapper(PostgresWrapper):
         cursor.close()
         return res
 
-    def get_response(self, query: str):
+    def get_response(self, queries: List[str]):
+        responses = []
         cursor = self._get_json_cursor()
-        response = self._execute_and_fetch(cursor, query)
-        return json.dumps(response)
+        for query in queries:
+            response = self._execute_and_fetch(cursor, query)
+            responses.append(json.dumps(response))
+        return responses
 
-    def save_response(self, response, filename):
-        with open(filename, 'w') as outfile:
-            json.dump(response, outfile)
+    def save_response(self, responses, filenames):
+        for response, filename in zip(responses, filenames):
+            with open(filename, 'w') as outfile:
+                json.dump(response, outfile)
 
     def disconnect(self):
         self.connection.close()

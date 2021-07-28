@@ -16,11 +16,11 @@ class PostgresWrapper(ABC):
         pass
 
     @abstractmethod
-    def get_response(self, query: str):
+    def get_response(self, queries: List[str]):
         pass
 
     @abstractmethod
-    def save_response(self, response, filename):
+    def save_response(self, responses, filenames):
         pass
 
     @abstractmethod

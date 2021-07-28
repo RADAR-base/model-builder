@@ -59,8 +59,8 @@ class QueryBuilder:
             raise TypeError("orderby_cols must be of same type as order.")
         self._check_order(order)
         if type(orderby_cols) == str:
-            order = list(order)
-            orderby_cols = list(orderby_cols)
+            order = [order]
+            orderby_cols = [orderby_cols]
         if type(orderby_cols) == list and all([type(col) == str for col in orderby_cols]):
                 return "SELECT " + "* " + "FROM " + self.tablename + " ORDER BY " + ", ".join(self._merge_order(orderby_cols, order))
         else:
@@ -72,11 +72,11 @@ class QueryBuilder:
         self._check_order(order)
 
         if type(select_cols) == str:
-            select_cols = list(select_cols)
+            select_cols = [select_cols]
 
         if type(orderby_cols) == str:
-            orderby_cols = list(orderby_cols)
-            order = list(order)
+            orderby_cols = [orderby_cols]
+            order = [order]
 
         if type(select_cols) == list and all([type(col) == str for col in select_cols]) and type(orderby_cols) == list and all([type(col) == str for col in orderby_cols]):
             return "SELECT " +  ", ".join(select_cols) + " FROM " + self.tablename + " ORDER BY " + ", ".join(self._merge_order(orderby_cols, order))
