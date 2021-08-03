@@ -8,5 +8,4 @@ openpyxl
 boto3
 mlflow
 numpy
-pandas
 scikit-learn

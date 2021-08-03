@@ -5,13 +5,13 @@ Compile docker file in the parent `model-builder` directory
 Build docker file using the following command:
 
 ```bash
-docker build -t lung_study_isolation_forest_novelty_detection  -f model-builder/ml_models/lung_study_isolation_forest_novelty_detection/Dockerfile  .
+docker build -t lung_study_lstm_anomaly_detection  -f model-builder/ml_models/anamoly_detection/lung_study/Dockerfile  .
 ```
 
 Run the docker file using the following command:
 
 ```bash
-docker run lung_study_isolation_forest_novelty_detection
+docker run lung_study_lstm_anomaly_detection
 ```
 
 ### Configuring Env file
