@@ -3,6 +3,7 @@ channels:
   - defaults
   - pytorch
 dependencies:
+  - pip
   - pip:
-    - -r file:requirements.txt
-    - -r file:../../../requirements.txt
+    - -r requirements.txt
+    - -r ../../../requirements.txt

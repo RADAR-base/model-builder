@@ -1,4 +1,6 @@
-## Build and Run the Dockerfile
+## Ml Models
+
+### Lung study Isolation Forest
 
 Compile docker file in the parent `model-builder` directory
 
@@ -14,8 +16,18 @@ Run the docker file using the following command:
 docker run lung_study_isolation_forest_novelty_detection
 ```
 
-### Configuring Env file
+### Lstm Anamoly Detection
 
-#### On Local system
+Compile docker file in the parent `model-builder` directory
 
-If ```mlflow-server``` is running on your local system, change `127.0.0.1` to host.docker.internal for macbook or use ```--network="host"``` for linux. For more info visit [this](https://stackoverflow.com/questions/24319662/from-inside-of-a-docker-container-how-do-i-connect-to-the-localhost-of-the-mach#:~:text=Use%20%2D%2Dnetwork%3D%22host%22,for%20Linux%2C%20per%20the%20documentation.).
+Build docker file using the following command:
+
+```bash
+docker build -t lung_study_lstm_anomaly_detection --build-arg conda_file_path=model-builder/ml_models/anamoly_detection/lung_study/conda.yaml --build-arg conda_env_name=lung_study_lstm_anomaly_detection --build-arg ml_training_file=model-builder/ml_models/anamoly_detection/lung_study/train.py -f model-builder/ml_models/Dockerfile  .
+```
+
+Run the docker file using the following command:
+
+```bash
+docker run lung_study_lstm_anomaly_detection
+```
