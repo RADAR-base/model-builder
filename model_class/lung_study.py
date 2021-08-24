@@ -66,6 +66,25 @@ class LungStudy(ModelClass):
             "SKEW" as pulse_skew \
             from "PUSH_GARMIN_PULSE_OX_TIMESTAMP_LONG_WINDOWED_1H_TABLE"'''
 
+        self.query_respiration =  '''SELECT "PROJECTID"  as pid, \
+            "USERID" as uid, \
+            "SOURCEID"  as sid, \
+            to_timestamp("TIME"  / 1000 )  as time, \
+            extract(hour from to_timestamp("TIME" / 1000)) as hour,\
+            date(to_timestamp("TIME"  / 1000 ) ) as date,\
+            to_timestamp("WINDOW_START" / 1000 ) as window_start,\
+            to_timestamp("WINDOW_END" / 1000 )  as window_end,
+            "COUNT" as respiration_count, \
+            "MIN" as respiration_min, \
+            "MAX" as respiration_max, \
+            "MEAN" as respiration_mean, \
+            "STDDEV" as respiration_std, \
+            "MEDIAN" as respiration_median, \
+            "MODE"  as respiration_model, \
+            "IQR" as respiration_iqr, \
+            "SKEW" as respiration_skew \
+            from "PUSH_GARMIN_RESPIRATION_TIMESTAMP_LONG_WINDOWED_1H_TABLE"'''
+
         self.query_activity = '''SELECT "projectId"  as pid, \
             "userId" as uid, \
             "sourceId"  as sid, \
@@ -104,6 +123,7 @@ class LungStudy(ModelClass):
         final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                         NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                         NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                        NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                         NATURAL LEFT JOIN ( {self.grouped_activity}) as activity'''
 
         return [final_query, self.sleep_activity, self.cat_score_retrieve_query]
@@ -115,6 +135,7 @@ class LungStudy(ModelClass):
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                            NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' '''
@@ -122,6 +143,7 @@ class LungStudy(ModelClass):
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                                NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND time < '{endtime}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time < '{endtime}' '''
@@ -129,6 +151,7 @@ class LungStudy(ModelClass):
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                            NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND time >= '{starttime}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime}' '''
@@ -136,6 +159,7 @@ class LungStudy(ModelClass):
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                            NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
 
@@ -162,7 +186,9 @@ class LungStudy(ModelClass):
                     'body_battery_median', 'body_battery_model', 'body_battery_iqr',
                     'body_battery_skew', 'pulse_count', 'pulse_min', 'pulse_max',
                     'pulse_mean', 'pulse_std', 'pulse_median', 'pulse_model', 'pulse_iqr',
-                    'pulse_skew', 'activity_duration', 'activity_distance', 'activity_calories', 'activity_steps',
+                    'pulse_skew','respiration_count', 'respiration_min', 'respiration_max',
+                    'respiration_mean', 'respiration_std', 'respiration_median', 'respiration_model', 'respiration_iqr',
+                    'respiration_skew','activity_duration', 'activity_distance', 'activity_calories', 'activity_steps',
                     'light', 'rem', 'awake', 'deep', 'unmeasurable']
         hours = data['hour'].tolist()
         aggregated_data = {}
