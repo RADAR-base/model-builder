@@ -1,6 +1,6 @@
 # Model Invocation Endpoint
 
-This module is responsible for getting model inference and details from the mlflow-server.
+This module is responsible for getting model inference and details from the mlflow-server. This REST module will run inference on the trained model and will require sufficient amount of memory to load a model and run inference.
 
 ## Set Up
 
@@ -101,7 +101,9 @@ curl -X 'POST' \
 
 Here `filename` and `classname` will be used to identify the study. The object of class `classname` from file `filename` is supposed generate queries which will be used to fetch data from the postgres db and the `preprocess_data` function from class `classname` is used to pre process the data.
 
-`dbname` is the name of the database.s
+In the case of lung study, the classname is `LungStudy` and filename is `lung_study`. This will fetch `LungStudy` class from the `model_class/lung_study.py` file.
+
+`dbname` is the name of the database.
 
 The desired data from user with id `user_id` will be fetched between time `starttime` and `endtime`. `starttime` and `endtime` are optional parameters and can be None if the desired data do not have any `starttime` or `endtime`.
 
@@ -138,3 +140,4 @@ curl -X 'POST' \
   "user_id": "string"
 }'
 ```
+
