@@ -67,3 +67,4 @@ class DataLoaderClass(BaseModel):
     starttime: datetime.datetime = None
     endtime: datetime.datetime = None
     user_id: str
+    project_id: str

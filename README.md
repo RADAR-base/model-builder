@@ -140,4 +140,3 @@ curl -X 'POST' \
   "user_id": "string"
 }'
 ```
-

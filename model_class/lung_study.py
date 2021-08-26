@@ -274,12 +274,25 @@ class LungStudy(ModelClass):
                         current_window_size += 1
         return np.array(dataset), indexer
 
+    def _check_completion(self, hourly_data):
+        # Including the completeness of the HR, pulse OX and body battery data as inclusion
+        ## Only accept reasonable count of values per hour - 25% in all cases, pulse - 1, respiration - 1
+        hourly_data = hourly_data[(hourly_data["heartrate_count"] >= 60) & (hourly_data["pulse_count"] >= 1)
+                                & (hourly_data["body_battery_count"] >= 18) & (hourly_data["respiration_count"] >= 1)].reset_index(drop=True)
+        # for HR at least 8 hours in a day, pulse Ox at least 6 hours and body battery at least 8 hours, respiration = 6
+        prepared_data_hourly_count = hourly_data.groupby(['uid', "date"]).agg({"heartrate_count": "count", "pulse_count": "count", "body_battery_count": "count", "respiration_count": "count"}).reset_index()
+        acceptible_values = prepared_data_hourly_count[(prepared_data_hourly_count["heartrate_count"] >= 8) & (prepared_data_hourly_count["pulse_count"] >= 6)
+                                    & (prepared_data_hourly_count["body_battery_count"] >= 8)  & (prepared_data_hourly_count["respiration_count"] >= 6)]
+        hourly_data = hourly_data[(hourly_data["uid"].isin(acceptible_values["uid"])) & (hourly_data["date"].isin(acceptible_values["date"]))].reset_index(drop=True)
+        return hourly_data
+
     def preprocess_data(self, raw_data):
         hourly_data, sleep_data, cat_score = raw_data
         # Handle missing (NA) data
         if hourly_data.empty:
             return None
-        hourly_data = hourly_data.fillna(0)
+        hourly_data = self._check_completion(hourly_data)
+        hourly_data = hourly_data.fillna(-1)
         # Merging CAT data with hourly data.
         hourly_data = hourly_data.merge(cat_score[["uid", "date", "cat_score"]], on=["uid", "date"], how="left")
         hourly_data = hourly_data.sort_values(by=["uid", "date"]).reset_index(drop=True)
@@ -290,7 +303,7 @@ class LungStudy(ModelClass):
         hourly_data["hour"] = hourly_data["hour"].astype(int)
 
         # Merging hourly sleep data with hourly data
-        hourly_data = hourly_data.merge(hourly_sleep_data, on=["uid", "hour", "date"], how="left").fillna(0)
+        hourly_data = hourly_data.merge(hourly_sleep_data, on=["uid", "hour", "date"], how="left").fillna(-1)
         daily_aggregate_data = self._aggregate_to_daily_data(hourly_data)
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
         if windowed_data.shape[0] == 0:
