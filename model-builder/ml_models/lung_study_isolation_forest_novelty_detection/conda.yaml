@@ -1,0 +1,8 @@
+name: lung_study_isolation_forest_novelty_detection
+channels:
+  - defaults
+dependencies:
+  - pip
+  - pip:
+    - -r requirements.txt
+    - -r ../../requirements.txt

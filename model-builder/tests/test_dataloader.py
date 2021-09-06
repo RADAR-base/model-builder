@@ -26,8 +26,8 @@ class TestPostgresJsonWrapper(unittest.TestCase):
                     port=self.port)()
         self.postgresql.initialize_database()
         self.querybuilder = QueryBuilder("test")
-        self.query = self.querybuilder.get_all_columns()
-        self.expected = '[{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}]'
+        self.queries = [self.querybuilder.get_all_columns()]
+        self.expected = ['[{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}]']
 
     def tearDown(self):
         self.postgresql.stop()
@@ -35,19 +35,9 @@ class TestPostgresJsonWrapper(unittest.TestCase):
     def test_get_response(self):
         dbconn = PostgresJsonWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
-        response=dbconn.get_response(self.query)
-        self.assertEqual(response, self.expected)
-        dbconn.disconnect()
-
-    def test_get_and_save_response(self):
-        dbconn = PostgresJsonWrapper(dbname=self.name, port=self.port)
-        dbconn.connect()
-        filename = "tmp.json"
-        dbconn.get_and_save_response(self.query, filename=filename)
-        with open(filename) as json_file:
-            response = json.load(json_file)
-        self.assertEqual(response, self.expected)
-        os.remove(filename)
+        responses=dbconn.get_response(self.queries)
+        for response, expected_instances in zip(responses, self.expected):
+            self.assertEqual(response, expected_instances)
         dbconn.disconnect()
 
 class TestPostgresPandasWrapper(unittest.TestCase):
@@ -58,45 +48,17 @@ class TestPostgresPandasWrapper(unittest.TestCase):
                     port=self.port)()
         self.postgresql.initialize_database()
         self.querybuilder = QueryBuilder("test")
-        self.query = self.querybuilder.get_all_columns()
-        self.expected = pd.DataFrame([{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}])
+        self.queries = [self.querybuilder.get_all_columns()]
+        self.expected = [pd.DataFrame([{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}])]
 
     def test_get_response(self):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
-        response=dbconn.get_response(self.query)
-        assert_frame_equal(response, self.expected)
+        responses=dbconn.get_response(self.queries)
+        for response, expected_instance in zip(responses, self.expected):
+            assert_frame_equal(response, expected_instance)
         dbconn.disconnect()
 
-    def test_get_and_save_response_csv(self):
-        dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
-        dbconn.connect()
-        filename = "tmp.csv"
-        dbconn.get_and_save_response(self.query, filename=filename)
-        response = pd.read_csv(filename)
-        assert_frame_equal(response, self.expected)
-        os.remove(filename)
-        dbconn.disconnect()
-
-    def test_get_and_save_response_json(self):
-        dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
-        dbconn.connect()
-        filename = "tmp.json"
-        dbconn.get_and_save_response(self.query, filename=filename)
-        response = pd.read_json(filename)
-        assert_frame_equal(response, self.expected)
-        os.remove(filename)
-        dbconn.disconnect()
-
-    def test_get_and_save_response_excel(self):
-        dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
-        dbconn.connect()
-        filename = "tmp.xlsx"
-        dbconn.get_and_save_response(self.query, filename=filename)
-        response = pd.read_excel(filename)
-        assert_frame_equal(response, self.expected)
-        os.remove(filename)
-        dbconn.disconnect()
 
     def tearDown(self):
         self.postgresql.stop()

@@ -2,15 +2,7 @@ name: linear_regression_remote_example
 channels:
   - defaults
 dependencies:
-  - numpy
-  - pandas
-  - scikit-learn
   - pip:
+    - -r file:requirements.txt
     - mlflow
     - -r file:../../requirements.txt
-variables:
-  MLFLOW_URL: http://172.16.1.21:5000
-  MLFLOW_TRACKING_URI: http://172.16.1.21:5000
-  MLFLOW_S3_ENDPOINT_URL: http://172.16.1.21:9000
-  AWS_ACCESS_KEY_ID:
-  AWS_SECRET_ACCESS_KEY:

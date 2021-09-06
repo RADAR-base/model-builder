@@ -17,20 +17,23 @@ class PostgresPandasWrapper(PostgresWrapper):
         alchemy_engine  = create_engine(db_url, pool_recycle=3600)
         self.connection = alchemy_engine.connect()
 
-    def get_response(self, query: str):
-        response = pd.read_sql(query, self.connection)
-        return response
+    def get_response(self, queries: List[str]):
+        responses = []
+        for query in queries:
+            responses.append(pd.read_sql(query, self.connection))
+        return responses
 
-    def save_response(self, response, filename):
-        file_format = filename.split(".")[-1]
-        if file_format == "csv":
-            response.to_csv(filename, index=False)
-        elif file_format == "xlsx" or file_format == "xls":
-            response.to_excel(filename, index=False)
-        elif file_format == "json":
-            response.to_json(filename)
-        else:
-            raise IOError("File format either not implemented or not available")
+    def save_response(self, responses, filenames):
+        for response, filename in zip(responses, filenames):
+            file_format = filename.split(".")[-1]
+            if file_format == "csv":
+                response.to_csv(filename, index=False)
+            elif file_format == "xlsx" or file_format == "xls":
+                response.to_excel(filename, index=False)
+            elif file_format == "json":
+                response.to_json(filename)
+            else:
+                raise IOError("File format either not implemented or not available")
 
     def disconnect(self):
         self.connection.close()

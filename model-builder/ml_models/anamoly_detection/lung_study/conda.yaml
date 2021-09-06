@@ -1,0 +1,9 @@
+name: lung_study_lstm_anomaly_detection
+channels:
+  - defaults
+  - pytorch
+dependencies:
+  - pip
+  - pip:
+    - -r requirements.txt
+    - -r ../../../requirements.txt

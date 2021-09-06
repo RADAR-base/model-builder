@@ -1,6 +1,8 @@
 
 from pydantic import BaseModel,ValidationError, validator
 from typing import List, Union, Dict
+import datetime
+from uuid import UUID
 
 class DataInputModelSplit(BaseModel):
     columns: List[str]
@@ -57,3 +59,12 @@ class DataInputModelInstances(BaseModel):
         return v
 
 DataInputModel = Union[DataInputModelSplit, DataInputModelInstances, DataInputModelInputs, DataInputModelRecord]
+
+class DataLoaderClass(BaseModel):
+    filename: str
+    classname: str
+    dbname: str
+    starttime: datetime.datetime = None
+    endtime: datetime.datetime = None
+    user_id: str
+    project_id: str
