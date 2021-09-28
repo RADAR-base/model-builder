@@ -168,7 +168,7 @@ def main():
         mlflow.log_image(fig2data(result_plot(history)), "result_plot.png")
         mlflow.log_param("Estimated Threshold", threshold)
 
-        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=LSTMLungStudyWrapper(model=lstm, threshold=threshold), conda_env=lstm_conda_env, code_path=["model-builder/ml_models/anamoly_detection/lstm.py"])
+        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=LSTMLungStudyWrapper(model=lstm, threshold=threshold), conda_env=lstm_conda_env, registered_model_name=mlflow_experiment_name, code_path=["model-builder/ml_models/anamoly_detection/lstm.py"])
 
 if __name__ == "__main__":
     main()

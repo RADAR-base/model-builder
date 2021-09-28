@@ -25,8 +25,7 @@ Use the same `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` values that have be
 Use these commands to run the REST API at `127.0.0.1:80`
 
 ```bash
-cd model-invocation-endpoint
-docker build -t model-invocation-endpoint .
+docker build -t model-invocation-endpoint -f model-invocation-endpoint/Dockerfile .
 docker run -d --name model-invocation-endpoint -p 80:80 model-invocation-endpoint
 ```
 

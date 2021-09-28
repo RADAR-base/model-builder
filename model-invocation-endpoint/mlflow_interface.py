@@ -96,12 +96,17 @@ class MlflowInterface():
     def get_inference_with_metadata(self, name, version, metadata):
         experiment_run = self.get_model_version_info(name, version)
         df = self._get_data_from_postgres(metadata)
-        return self._mlflow_inference(experiment_run, df)
+        return_obj = {}
+        return_obj["model_name"] = name
+        return_obj["version"] = version
+        return_obj["inference"] = self._mlflow_inference(experiment_run, df)
+        return return_obj
 
     def _get_best_model(self, name):
         experiment = self._search_experiment_by_name(name)
+        print( self.client.search_runs(experiment.experiment_id, order_by=["metrics.m DESC"]))
         best_model = self.client.search_runs(experiment.experiment_id, order_by=["metrics.m DESC"])[0]
-        return best_model
+        return best_model, "best"
 
     def get_inference_from_best_model(self, name, data):
         experiment_run = self._get_best_model(name)
@@ -109,14 +114,20 @@ class MlflowInterface():
         return self._mlflow_inference(experiment_run, df)
 
     def get_inference_from_best_model_with_metadata(self, name, metadata):
-        experiment_run = self._get_best_model(name)
+        experiment_run, version = self._get_best_model(name)
         df = self._get_data_from_postgres(metadata)
-        return self._mlflow_inference(experiment_run, df)
+        return_obj = {}
+        return_obj["model_name"] = name
+        return_obj["version"] = version
+        return_obj["inference"] = self._mlflow_inference(experiment_run, df)
+        return return_obj
 
     def _get_latest_model(self, name):
         experiment = self._search_experiment_by_name(name)
-        latest_model = self._get_all_experiment_runs(experiment.experiment_id)[0]
-        return latest_model
+        all_experiments = self._get_all_experiment_runs(experiment.experiment_id)
+        latest_model = all_experiments[0]
+        version = len(all_experiments)
+        return latest_model, version
 
     def get_inference_from_latest_model(self, name, data):
         experiment_run = self._get_latest_model(name)
@@ -124,6 +135,10 @@ class MlflowInterface():
         return self._mlflow_inference(experiment_run, df)
 
     def get_inference_from_latest_model_with_metadata(self, name, metadata):
-        experiment_run = self._get_latest_model(name)
+        experiment_run, version = self._get_latest_model(name)
         df = self._get_data_from_postgres(metadata)
-        return self._mlflow_inference(experiment_run, df)
+        return_obj = {}
+        return_obj["model_name"] = name
+        return_obj["version"] = version
+        return_obj["inference"] = self._mlflow_inference(experiment_run, df)
+        return return_obj

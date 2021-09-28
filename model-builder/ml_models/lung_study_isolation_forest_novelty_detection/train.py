@@ -89,7 +89,7 @@ def main():
         mlflow.log_param("n_estimator", n_estimator)
         mlflow.log_param("Estimated Threshold", threshold)
         mlflow.log_metric("total_anamolies_detected", np.sum(detected_anamoly == -1))
-        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=IsolationForestWrapper(model=est, threshold=threshold), conda_env=isolation_forest_conda_env)
+        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=IsolationForestWrapper(model=est, threshold=threshold), registered_model_name=mlflow_experiment_name, conda_env=isolation_forest_conda_env)
 
 if __name__ == "__main__":
     main()
