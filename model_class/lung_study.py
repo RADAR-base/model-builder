@@ -2,6 +2,7 @@ from model_class import  ModelClass
 import pandas as pd
 from datetime import  timedelta
 import datetime
+from datetime import datetime as dt
 import numpy as np
 
 class LungStudy(ModelClass):
@@ -118,6 +119,8 @@ class LungStudy(ModelClass):
             "CAT_SCORE" as cat_score \
             from "QUESTIONNAIRE_CAT_SCORE_STREAM"'''
 
+        self.inference_table_name = "inference"
+
 
     def get_query_for_training(self):
         final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
@@ -206,7 +209,7 @@ class LungStudy(ModelClass):
 
         # Inclusion criterion - CAT > 5 not include that. if CAT score not available, go upto 7 previous day.else discard the data
         prepared_data = prepared_data[prepared_data["cat_score"] <= 5]
-        aggregated_data = prepared_data.groupby(["uid", "date"]).apply(self._aggregate)
+        aggregated_data = prepared_data.groupby(["uid", "date", "pid"]).apply(self._aggregate)
         return aggregated_data.reset_index()
 
     def _aggregate_sleep(self, row):
@@ -265,8 +268,8 @@ class LungStudy(ModelClass):
                     current_window_size = 1
                 else:
                     if current_window_size + 1 == self.window_size:
-                        dataset.append(df.iloc[idx - self.window_size + 1: idx + 1, 3:].values)
-                        indexer[index_record] = (df.iloc[idx, 0], df.iloc[idx, 1])
+                        dataset.append(df.iloc[idx - self.window_size + 1: idx + 1, 4:].values)
+                        indexer[index_record] = (df.iloc[idx, 0], df.iloc[idx, 1], df.iloc[idx, 2])
                         index_record += 1
                         last_value = value
                     else:
@@ -311,3 +314,12 @@ class LungStudy(ModelClass):
         # Currently dropping window but might be usefull in the future.
         # daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
         return windowed_data, windowed_data_index
+
+    def create_return_obj(self, indexes, model_name, model_version, inference_result):
+        dateTimeObj = dt.now(tz=None)
+        return_obj = pd.DataFrame.from_dict(indexes, orient="index", columns=["uid", "date", "pid"])
+        return_obj["inference_result"] = inference_result
+        return_obj["model_name"] = model_name
+        return_obj["model_version"] = model_version
+        return_obj["timestamp"] = dateTimeObj.timestamp()
+        return return_obj

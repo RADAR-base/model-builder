@@ -27,10 +27,15 @@ class MlflowInterface():
 
     def _get_postgres_data(self):
         self.postgres_data = {}
+        self.postgres_inference_data = {}
         self.postgres_data["user"] = os.environ.get('POSTGRES_USER')
         self.postgres_data["password"] = os.environ.get('POSTGRES_PASS')
         self.postgres_data["host"] = os.environ.get('POSTGRES_HOST')
         self.postgres_data["port"] = os.environ.get('POSTGRES_PORT')
+        self.postgres_inference_data["user"] = os.environ.get('INFERENCE_POSTGRES_USER')
+        self.postgres_inference_data["password"] = os.environ.get('INFERENCE_POSTGRES_PASS')
+        self.postgres_inference_data["host"] = os.environ.get('INFERENCE_POSTGRES_HOST')
+        self.postgres_inference_data["port"] = os.environ.get('INFERENCE_POSTGRES_PORT')
 
     def _search_experiment_by_name(self, name):
         experiment = self.client.get_experiment_by_name(name)
@@ -80,12 +85,22 @@ class MlflowInterface():
         postgres.connect()
         module = importlib.import_module(f"model_class.{metadata.filename}")
         data_class = getattr(module, metadata.classname)
+        self.data_class_instance = data_class()
+        if not isinstance(self.data_class_instance, ModelClass):
+            raise HTTPException(400, f"Requested class is not an instance of ModelClass")
+        queries = self.data_class_instance.get_query_for_prediction(metadata.user_id, metadata.starttime, metadata.endtime)
+        raw_data = postgres.get_response(queries)
+        return self.data_class_instance.preprocess_data(raw_data)
+
+    def _insert_inference_data_in_postgres(self, metadata, inference_data):
+        postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_inference_data)
+        postgres.connect()
+        module = importlib.import_module(f"model_class.{metadata.filename}")
+        data_class = getattr(module, metadata.classname)
         data_class_instance = data_class()
         if not isinstance(data_class_instance, ModelClass):
             raise HTTPException(400, f"Requested class is not an instance of ModelClass")
-        queries = data_class_instance.get_query_for_prediction(metadata.user_id, metadata.starttime, metadata.endtime)
-        raw_data = postgres.get_response(queries)
-        return data_class_instance.preprocess_data(raw_data)
+        postgres.insert_data(inference_data, data_class_instance.inference_table_name)
 
 
     def get_inference(self, name, version, data):
@@ -96,11 +111,10 @@ class MlflowInterface():
     def get_inference_with_metadata(self, name, version, metadata):
         experiment_run = self.get_model_version_info(name, version)
         df = self._get_data_from_postgres(metadata)
-        return_obj = {}
-        return_obj["model_name"] = name
-        return_obj["version"] = version
-        return_obj["inference"] = self._mlflow_inference(experiment_run, df)
-        return return_obj
+        inference = self._mlflow_inference(experiment_run, df)
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, inference)
+        self._insert_inference_data_in_postgres(metadata, return_obj)
+        return return_obj.to_dict(orient='records')
 
     def _get_best_model(self, name):
         experiment = self._search_experiment_by_name(name)
