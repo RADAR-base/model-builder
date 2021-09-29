@@ -7,3 +7,4 @@ __pycache__/
 mlruns/
 .env
 .DS_STORE
+mlflow
