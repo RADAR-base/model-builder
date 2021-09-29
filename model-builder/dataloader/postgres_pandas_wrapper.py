@@ -35,5 +35,8 @@ class PostgresPandasWrapper(PostgresWrapper):
             else:
                 raise IOError("File format either not implemented or not available")
 
+    def insert_data(self, inference_data, tablename):
+        inference_data.to_sql(tablename, con=self.connection, if_exists="append", index=False)
+
     def disconnect(self):
         self.connection.close()
