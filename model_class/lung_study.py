@@ -308,6 +308,8 @@ class LungStudy(ModelClass):
         # Merging hourly sleep data with hourly data
         hourly_data = hourly_data.merge(hourly_sleep_data, on=["uid", "hour", "date"], how="left").fillna(-1)
         daily_aggregate_data = self._aggregate_to_daily_data(hourly_data)
+        if daily_aggregate_data.empty:
+            return None
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
         if windowed_data.shape[0] == 0:
             return None
@@ -322,4 +324,5 @@ class LungStudy(ModelClass):
         return_obj["model_name"] = model_name
         return_obj["model_version"] = model_version
         return_obj["timestamp"] = dateTimeObj.timestamp()
+        return_obj["window_size"] = self.window_size
         return return_obj

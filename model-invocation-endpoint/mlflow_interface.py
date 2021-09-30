@@ -11,6 +11,8 @@ sys.path.insert(1, '..')
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
 from model_class import ModelClass
 import importlib
+from sqlalchemy.exc import DataError
+
 class MlflowInterface():
 
     def __init__(self):
@@ -100,7 +102,10 @@ class MlflowInterface():
         data_class_instance = data_class()
         if not isinstance(data_class_instance, ModelClass):
             raise HTTPException(400, f"Requested class is not an instance of ModelClass")
-        postgres.insert_data(inference_data, data_class_instance.inference_table_name)
+        try:
+            postgres.insert_data(inference_data, data_class_instance.inference_table_name)
+        except DataError:
+            raise HTTPException(500, f"Cannot upload infernece result to postgres db")
 
 
     def get_inference(self, name, version, data):
@@ -108,33 +113,33 @@ class MlflowInterface():
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 
-    def get_inference_with_metadata(self, name, version, metadata):
+    def get_inference_with_metadata(self, name, version, metadata, upload):
         experiment_run = self.get_model_version_info(name, version)
         df = self._get_data_from_postgres(metadata)
         inference = self._mlflow_inference(experiment_run, df)
         return_obj = self.data_class_instance.create_return_obj(df[1], name, version, inference)
-        self._insert_inference_data_in_postgres(metadata, return_obj)
+        if upload:
+            self._insert_inference_data_in_postgres(metadata, return_obj)
         return return_obj.to_dict(orient='records')
 
     def _get_best_model(self, name):
         experiment = self._search_experiment_by_name(name)
-        print( self.client.search_runs(experiment.experiment_id, order_by=["metrics.m DESC"]))
         best_model = self.client.search_runs(experiment.experiment_id, order_by=["metrics.m DESC"])[0]
-        return best_model, "best"
+        return best_model, "-1"
 
     def get_inference_from_best_model(self, name, data):
         experiment_run = self._get_best_model(name)
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 
-    def get_inference_from_best_model_with_metadata(self, name, metadata):
+    def get_inference_from_best_model_with_metadata(self, name, metadata, upload):
         experiment_run, version = self._get_best_model(name)
         df = self._get_data_from_postgres(metadata)
-        return_obj = {}
-        return_obj["model_name"] = name
-        return_obj["version"] = version
-        return_obj["inference"] = self._mlflow_inference(experiment_run, df)
-        return return_obj
+        inference = self._mlflow_inference(experiment_run, df)
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, inference)
+        if upload:
+            self._insert_inference_data_in_postgres(metadata, return_obj)
+        return return_obj.to_dict(orient='records')
 
     def _get_latest_model(self, name):
         experiment = self._search_experiment_by_name(name)
@@ -148,11 +153,11 @@ class MlflowInterface():
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 
-    def get_inference_from_latest_model_with_metadata(self, name, metadata):
+    def get_inference_from_latest_model_with_metadata(self, name, metadata, upload):
         experiment_run, version = self._get_latest_model(name)
         df = self._get_data_from_postgres(metadata)
-        return_obj = {}
-        return_obj["model_name"] = name
-        return_obj["version"] = version
-        return_obj["inference"] = self._mlflow_inference(experiment_run, df)
-        return return_obj
+        inference = self._mlflow_inference(experiment_run, df)
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, inference)
+        if upload:
+            self._insert_inference_data_in_postgres(metadata, return_obj)
+        return return_obj.to_dict(orient='records')
