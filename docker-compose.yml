@@ -13,6 +13,8 @@ services:
         - waitfordb
         - mlflow-server
         - s3
+      volumes:
+        - ./model-invocation-endpoint/.env:/app/model-invocation-endpoint/.env
       environment:
         - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
         - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
@@ -46,23 +48,23 @@ services:
         restart: always
         build:
           context: images/mlflow-server/
-          args:
-            - DB_URI=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgdb:5432/mlflow-db
-            - SERVER_HOST=${HOST}
-            - SERVER_PORT=${MLFLOW_PORT}
-            - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
         environment:
             - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
             - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
             - AWS_DEFAULT_REGION=${AWS_REGION}
             - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
+            - S3_HOST=s3
+            - S3_PORT=9000
+            - DB_URI=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgdb:5432/mlflow-db
+            - SERVER_HOST=${HOST}
+            - SERVER_PORT=${MLFLOW_PORT}
+            - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
         ports:
             - ${MLFLOW_PORT}:${MLFLOW_PORT}
         depends_on:
             - pgdb
             - waitfordb
             - s3
-        entrypoint: ["mlflow", "server", "--backend-store-uri",  $DB_URI, "--default-artifact-root",  $ARTIFACT_STORE, "--host",  $HOST, "--port",  $MLFLOW_PORT]
 
     s3:
         image: minio/minio:latest
