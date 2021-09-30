@@ -132,15 +132,14 @@ class LungStudy(ModelClass):
         return [final_query, self.sleep_activity, self.cat_score_retrieve_query]
 
 
-    def get_query_for_prediction(self, user_id, starttime, endtime):
-
+    def get_query_for_prediction(self, user_id, project_id, starttime, endtime):
         if starttime is None and endtime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' '''
         elif starttime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
@@ -148,25 +147,27 @@ class LungStudy(ModelClass):
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                                 NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND time < '{endtime}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' AND time < '{endtime}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time < '{endtime}' '''
         elif endtime is None:
+            starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND time >= '{starttime}' '''
-            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' '''
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime_with_lag}' '''
         else:
+            starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
 
-            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
 
         cat_score_retrieve_query = f'''SELECT * from ({self.cat_score_retrieve_query}) as cat_score where uid = '{user_id}' '''
         print(sleep_activity_query, cat_score_retrieve_query)

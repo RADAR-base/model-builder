@@ -90,7 +90,7 @@ class MlflowInterface():
         self.data_class_instance = data_class()
         if not isinstance(self.data_class_instance, ModelClass):
             raise HTTPException(400, f"Requested class is not an instance of ModelClass")
-        queries = self.data_class_instance.get_query_for_prediction(metadata.user_id, metadata.starttime, metadata.endtime)
+        queries = self.data_class_instance.get_query_for_prediction(metadata.user_id, metadata.project_id, metadata.starttime, metadata.endtime)
         raw_data = postgres.get_response(queries)
         return self.data_class_instance.preprocess_data(raw_data)
 
