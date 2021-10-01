@@ -45,6 +45,13 @@ class MlflowInterface():
             raise HTTPException(404, f"Experiment by name {name} does not exist")
         return experiment
 
+    def _search_model_version(self, run_id, experiment_id):
+        experiment_list = self.client.search_runs(experiment_id)
+        for i, run in enumerate(experiment_list):
+            if run.info.run_id == run_id:
+                return len(experiment_list) - i
+        raise HTTPException(404, f"Model not found")
+
     def _get_all_experiment_runs(self, experiment_id):
         return self.client.search_runs(experiment_id)
 
@@ -124,8 +131,9 @@ class MlflowInterface():
 
     def _get_best_model(self, name):
         experiment = self._search_experiment_by_name(name)
-        best_model = self.client.search_runs(experiment.experiment_id, order_by=["metrics.m DESC"])[0]
-        return best_model, "-1"
+        best_model = self.client.search_runs(experiment.experiment_id, order_by=["metrics.validation_loss ASC"])[0]
+        version = self._search_model_version(best_model.info.run_id, experiment.experiment_id)
+        return best_model, version
 
     def get_inference_from_best_model(self, name, data):
         experiment_run = self._get_best_model(name)

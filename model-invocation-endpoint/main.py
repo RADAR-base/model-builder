@@ -40,13 +40,13 @@ def get_inference(name: str, version: int, data: DataInputModel):
     return mlflow_interface.get_inference(name, version, data)
 
 @app.post("/model/{name}/latest/metadata-invocation/")
-def get_inference_from_latest_model_with_metadata(name: str, metadata: DataLoaderClass, upload: Optional[bool] = False):
+def get_inference_from_latest_model_with_metadata(name: str, metadata: DataLoaderClass, upload: Optional[bool] = True):
     return mlflow_interface.get_inference_from_latest_model_with_metadata(name, metadata, upload)
 
 @app.post("/model/{name}/best/metadata-invocation/")
-def get_inference_from_best_model_with_metadata(name: str, metadata: DataLoaderClass, upload: Optional[bool] = False):
+def get_inference_from_best_model_with_metadata(name: str, metadata: DataLoaderClass, upload: Optional[bool] = True):
     return mlflow_interface.get_inference_from_best_model_with_metadata(name, metadata, upload)
 
 @app.post("/model/{name}/{version}/metadata-invocation/")
-def get_inference_with_metadata(name: str, version: int, metadata: DataLoaderClass, upload: Optional[bool] = False):
+def get_inference_with_metadata(name: str, version: int, metadata: DataLoaderClass, upload: Optional[bool] = True):
     return mlflow_interface.get_inference_with_metadata(name, version, metadata, upload)
