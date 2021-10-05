@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import sys
+import json
 
 class ModelClass(ABC):
 
@@ -20,3 +21,7 @@ class ModelClass(ABC):
     @abstractmethod
     def create_return_obj(self):
         pass
+
+    # conversion function:
+    def dict2json(self, dictionary):
+        return json.dumps(dictionary, ensure_ascii=False)

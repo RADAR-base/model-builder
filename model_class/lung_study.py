@@ -121,7 +121,6 @@ class LungStudy(ModelClass):
 
         self.inference_table_name = "inference"
 
-
     def get_query_for_training(self):
         final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                         NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
@@ -321,9 +320,10 @@ class LungStudy(ModelClass):
     def create_return_obj(self, indexes, model_name, model_version, inference_result):
         dateTimeObj = dt.now(tz=None)
         return_obj = pd.DataFrame.from_dict(indexes, orient="index", columns=["uid", "date", "pid"])
-        return_obj["inference_result"] = inference_result
+        return_obj["invocation_result"] = [{"anamoly_detected": result} for result in inference_result]
         return_obj["model_name"] = model_name
         return_obj["model_version"] = model_version
         return_obj["timestamp"] = dateTimeObj.timestamp()
         return_obj["window_size"] = self.window_size
+        return_obj['invocation_result'] = return_obj.invocation_result.map(self.dict2json)
         return return_obj
