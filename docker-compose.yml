@@ -1,0 +1,82 @@
+version: '3.3'
+
+services:
+    model-invocation:
+      build:
+        context: .
+        dockerfile: model-invocation-endpoint/Dockerfile
+      image: model-invocation-endpoint:1.0.0
+      ports:
+        - 80:80
+      depends_on:
+        - pgdb
+        - waitfordb
+        - mlflow-server
+        - s3
+      volumes:
+        - ./model-invocation-endpoint/.env:/app/model-invocation-endpoint/.env
+      environment:
+        - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+        - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+        - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
+        - MLFLOW_TRACKING_URI=http://mlflow-server:5000
+        - MLFLOW_URL=http://mlflow-server:5000
+        - POSTGRES_USER=${POSTGRES_USER}
+        - POSTGRES_PASS=${POSTGRES_PASS}
+        - POSTGRES_HOST=pgdb
+        - POSTGRES_PORT=5432
+
+    waitfordb:
+      image: dadarek/wait-for-dependencies
+      depends_on:
+        - pgdb
+      command: pgdb:5432
+
+    pgdb:
+        image: postgres:13.1-alpine
+        ports:
+          - 5432:5432
+        environment:
+          POSTGRES_USER: ${POSTGRES_USER}
+          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+          POSTGRES_DB: mlflow-db
+        restart: always
+        volumes:
+          - ${MP_MLFLOW_DIR}/data:/var/lib/postgresql/data/
+
+    mlflow-server:
+        restart: always
+        build:
+          context: images/mlflow-server/
+        environment:
+            - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+            - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+            - AWS_DEFAULT_REGION=${AWS_REGION}
+            - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
+            - S3_HOST=s3
+            - S3_PORT=9000
+            - DB_URI=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgdb:5432/mlflow-db
+            - SERVER_HOST=${HOST}
+            - SERVER_PORT=${MLFLOW_PORT}
+            - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
+        ports:
+            - ${MLFLOW_PORT}:${MLFLOW_PORT}
+        depends_on:
+            - pgdb
+            - waitfordb
+            - s3
+
+    s3:
+        image: minio/minio:latest
+        container_name: aws-s3
+        ports:
+          - 9000:9000
+        environment:
+          - MINIO_ACCESS_KEY=${AWS_ACCESS_KEY_ID}
+          - MINIO_SECRET_KEY=${AWS_SECRET_ACCESS_KEY}
+          - MINIO_ROOT_USER=${AWS_ACCESS_KEY_ID}
+          - MINIO_ROOT_PASSWORD=${AWS_SECRET_ACCESS_KEY}
+        command: server /data
+        volumes:
+          - ${MP_MLFLOW_DIR}/s3:/data
+
