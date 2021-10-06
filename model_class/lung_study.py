@@ -317,12 +317,13 @@ class LungStudy(ModelClass):
         # daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
         return windowed_data, windowed_data_index
 
-    def create_return_obj(self, indexes, model_name, model_version, inference_result):
+    def create_return_obj(self, indexes, model_name, model_version, alias, inference_result):
         dateTimeObj = dt.now(tz=None)
         return_obj = pd.DataFrame.from_dict(indexes, orient="index", columns=["uid", "date", "pid"])
         return_obj["invocation_result"] = [{"anamoly_detected": result} for result in inference_result]
         return_obj["model_name"] = model_name
         return_obj["model_version"] = model_version
+        return_obj["alias"] = alias
         return_obj["timestamp"] = dateTimeObj.timestamp()
         return_obj["window_size"] = self.window_size
         return_obj['invocation_result'] = return_obj.invocation_result.map(self.dict2json)

@@ -154,7 +154,7 @@ def main():
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size)
 
-    with mlflow.start_run() as run:
+    with mlflow.start_run(tags={"alias":"lstmad"}) as run:
         mlflow.log_param("num_layers", num_layers)
         mlflow.log_param("latent_dim", latent_dim)
         mlflow.log_param("input_dim", input_dim)

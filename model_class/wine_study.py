@@ -25,13 +25,14 @@ class WineStudy(ModelClass):
     def preprocess_data(self, data):
         return data[0], data[0].index
 
-    def create_return_obj(self, indexes, model_name, model_version, inference_result):
+    def create_return_obj(self, indexes, model_name, model_version, alias, inference_result):
         dateTimeObj = dt.now(tz=None)
         print(indexes)
         return_obj = pd.DataFrame({"idx":indexes})
         return_obj["invocation_result"] = [{"wine_quality": result} for result in inference_result]
         return_obj["model_name"] = model_name
         return_obj["model_version"] = model_version
+        return_obj["alias"] = alias
         return_obj["timestamp"] = dateTimeObj.timestamp()
         return_obj['invocation_result'] = return_obj.invocation_result.map(self.dict2json)
         return return_obj

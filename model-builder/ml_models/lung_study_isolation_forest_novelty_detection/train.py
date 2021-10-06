@@ -80,7 +80,7 @@ def main():
     n_estimator = args.n_estimator
     train_x, train_x_index =  import_data()
     train_x = train_x.reshape(train_x.shape[0], -1)
-    with mlflow.start_run():
+    with mlflow.start_run(tags={"alias":"rfad"}):
         est = IsolationForest(n_estimators=n_estimator)
         est.fit(train_x)
         #Returns -1 for outliers and 1 for inliers.

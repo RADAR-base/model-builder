@@ -124,7 +124,11 @@ class MlflowInterface():
         experiment_run = self.get_model_version_info(name, version)
         df = self._get_data_from_postgres(metadata)
         inference = self._mlflow_inference(experiment_run, df)
-        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, inference)
+        if "alias" in experiment_run.data.tags:
+            alias = experiment_run.data.tags["alias"]
+        else:
+            alias = "Alias Not found"
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
         return return_obj.to_dict(orient='records')
@@ -144,7 +148,11 @@ class MlflowInterface():
         experiment_run, version = self._get_best_model(name)
         df = self._get_data_from_postgres(metadata)
         inference = self._mlflow_inference(experiment_run, df)
-        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, inference)
+        if "alias" in experiment_run.data.tags:
+            alias = experiment_run.data.tags["alias"]
+        else:
+            alias = "Alias Not found"
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
         return return_obj.to_dict(orient='records')
@@ -165,7 +173,11 @@ class MlflowInterface():
         experiment_run, version = self._get_latest_model(name)
         df = self._get_data_from_postgres(metadata)
         inference = self._mlflow_inference(experiment_run, df)
-        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, inference)
+        if "alias" in experiment_run.data.tags:
+            alias = experiment_run.data.tags["alias"]
+        else:
+            alias = "Alias Not found"
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
         return return_obj.to_dict(orient='records')

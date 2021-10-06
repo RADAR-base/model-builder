@@ -102,7 +102,7 @@ def main():
     l1_ratio = float(args.l1_ratio)
     num_iterations = int(args.num_iterations)
 
-    with mlflow.start_run():
+    with mlflow.start_run(tags={"alias":"elasticnetws"}):
         lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=num_iterations)
         lr.fit(train_x, train_y)
 
