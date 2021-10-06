@@ -133,19 +133,25 @@ class MlflowInterface():
             self._insert_inference_data_in_postgres(metadata, return_obj)
         return return_obj.to_dict(orient='records')
 
-    def _get_best_model(self, name):
+    def _get_best_model(self, name, metric):
         experiment = self._search_experiment_by_name(name)
-        best_model = self.client.search_runs(experiment.experiment_id, order_by=["metrics.validation_loss ASC"])[0]
+        metrics_list = list(self.client.search_runs(experiment.experiment_id)[0].data.metrics)
+        if metric == None:
+            metric = metrics_list[0]
+        else:
+            if metric not in metrics_list:
+                raise HTTPException(404, f"{metric} metric is not a part of the model")
+        best_model = self.client.search_runs(experiment.experiment_id, order_by=[f"metrics.{metrics_list[0]} ASC"])[0]
         version = self._search_model_version(best_model.info.run_id, experiment.experiment_id)
         return best_model, version
 
-    def get_inference_from_best_model(self, name, data):
-        experiment_run = self._get_best_model(name)
+    def get_inference_from_best_model(self, name, data, metric):
+        experiment_run = self._get_best_model(name, metric)
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 
-    def get_inference_from_best_model_with_metadata(self, name, metadata, upload):
-        experiment_run, version = self._get_best_model(name)
+    def get_inference_from_best_model_with_metadata(self, name, metadata, metric, upload):
+        experiment_run, version = self._get_best_model(name, metric)
         df = self._get_data_from_postgres(metadata)
         inference = self._mlflow_inference(experiment_run, df)
         if "alias" in experiment_run.data.tags:

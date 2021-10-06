@@ -27,8 +27,8 @@ def get_model_version_info(name: str, version: int):
 #    return 0
 
 @app.post("/model/{name}/best/invocation/")
-def get_inference_from_best_model(name: str, data: DataInputModel):
-    return  mlflow_interface.get_inference_from_best_model(name, data)
+def get_inference_from_best_model(name: str, data: DataInputModel, metric: str = None):
+    return  mlflow_interface.get_inference_from_best_model(name, data, metric)
 
 
 @app.post("/model/{name}/latest/invocation/")
@@ -44,8 +44,8 @@ def get_inference_from_latest_model_with_metadata(name: str, metadata: DataLoade
     return mlflow_interface.get_inference_from_latest_model_with_metadata(name, metadata, upload)
 
 @app.post("/model/{name}/best/metadata-invocation/")
-def get_inference_from_best_model_with_metadata(name: str, metadata: DataLoaderClass, upload: Optional[bool] = True):
-    return mlflow_interface.get_inference_from_best_model_with_metadata(name, metadata, upload)
+def get_inference_from_best_model_with_metadata(name: str, metadata: DataLoaderClass, metric: Optional[str] = None, upload: Optional[bool] = True):
+    return mlflow_interface.get_inference_from_best_model_with_metadata(name, metadata, metric, upload)
 
 @app.post("/model/{name}/{version}/metadata-invocation/")
 def get_inference_with_metadata(name: str, version: int, metadata: DataLoaderClass, upload: Optional[bool] = True):
