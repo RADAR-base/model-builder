@@ -11,7 +11,9 @@ sys.path.insert(1, '..')
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
 from model_class import ModelClass
 import importlib
-from sqlalchemy.exc import DataError
+from sqlalchemy.exc import DataError, DBAPIError
+from requests.exceptions import ConnectionError
+from botocore.exceptions import EndpointConnectionError, ClientError
 
 class MlflowInterface():
 
@@ -40,7 +42,10 @@ class MlflowInterface():
         self.postgres_inference_data["port"] = os.environ.get('INFERENCE_POSTGRES_PORT')
 
     def _search_experiment_by_name(self, name):
-        experiment = self.client.get_experiment_by_name(name)
+        try:
+            experiment = self.client.get_experiment_by_name(name)
+        except ConnectionError:
+            raise HTTPException(502, f"Mlflow server error: cannot connect to mlflow server")
         if experiment is None:
             raise HTTPException(404, f"Experiment by name {name} does not exist")
         return experiment
@@ -67,13 +72,20 @@ class MlflowInterface():
         all_runs = self._get_all_experiment_runs(experiment.experiment_id)
         if len(all_runs) < version:
             raise HTTPException(404, f"Version {version} of experiment {name} does not exist")
+        elif version <= 0:
+            raise HTTPException(400, f"Model version cannot be less than 1")
         else:
             return all_runs[len(all_runs) - version]
 
     def _mlflow_inference(self, model_run, df):
         if df is None:
             raise HTTPException(404, f"No data available for inference")
-        loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
+        try:
+            loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
+        except EndpointConnectionError:
+            raise HTTPException(502, f"Minio Server Error: Cannot access the registered model")
+        except ClientError as e:
+            raise HTTPException(502, f"Minio Server Error: {e}")
         return list(loaded_model.predict(df))
 
     def _convert_data_to_df(self, data):
@@ -90,15 +102,22 @@ class MlflowInterface():
 
 
     def _get_data_from_postgres(self, metadata):
-        postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_data)
-        postgres.connect()
-        module = importlib.import_module(f"model_class.{metadata.filename}")
-        data_class = getattr(module, metadata.classname)
-        self.data_class_instance = data_class()
-        if not isinstance(self.data_class_instance, ModelClass):
-            raise HTTPException(400, f"Requested class is not an instance of ModelClass")
-        queries = self.data_class_instance.get_query_for_prediction(metadata.user_id, metadata.project_id, metadata.starttime, metadata.endtime)
-        raw_data = postgres.get_response(queries)
+        try:
+            postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_data)
+            postgres.connect()
+            module = importlib.import_module(f"model_class.{metadata.filename}")
+            data_class = getattr(module, metadata.classname)
+            self.data_class_instance = data_class()
+            if not isinstance(self.data_class_instance, ModelClass):
+                raise HTTPException(400, f"Requested class is not an instance of ModelClass")
+            queries = self.data_class_instance.get_query_for_prediction(metadata.user_id, metadata.project_id, metadata.starttime, metadata.endtime)
+            raw_data = postgres.get_response(queries)
+        except ModuleNotFoundError as e:
+            raise HTTPException(400, f"{e}")
+        except AttributeError as e:
+            raise HTTPException(400, f"{e}")
+        except DBAPIError as e:
+            raise HTTPException(400, f"{e}")
         return self.data_class_instance.preprocess_data(raw_data)
 
     def _insert_inference_data_in_postgres(self, metadata, inference_data):
