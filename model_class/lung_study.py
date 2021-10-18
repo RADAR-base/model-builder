@@ -120,14 +120,15 @@ class LungStudy(ModelClass):
             from "QUESTIONNAIRE_CAT_SCORE_STREAM"'''
 
         self.inference_table_name = "inference"
+        self.project_id = "RALPMH-COPD-Lon-s1"
 
     def get_query_for_training(self):
         final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                         NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                         NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                         NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
-                        NATURAL LEFT JOIN ( {self.grouped_activity}) as activity'''
-
+                        NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
+                        where pid = '{self.project_id}' '''
         return [final_query, self.sleep_activity, self.cat_score_retrieve_query]
 
 

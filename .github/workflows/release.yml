@@ -12,7 +12,7 @@ jobs:
 
         env:
             DOCKER_IMAGE: model-builder/model-invocation-endpoint
-            DOCKERHUB_IMAGE: radar-base/model-invocation-endpoint
+            DOCKERHUB_IMAGE: radarbase/model-invocation-endpoint
 
         # Steps represent a sequence of tasks that will be executed as part of the job
         steps:

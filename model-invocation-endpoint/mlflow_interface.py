@@ -146,7 +146,7 @@ class MlflowInterface():
         if "alias" in experiment_run.data.tags:
             alias = experiment_run.data.tags["alias"]
         else:
-            alias = "Alias Not found"
+            alias = "null"
         return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
@@ -176,7 +176,7 @@ class MlflowInterface():
         if "alias" in experiment_run.data.tags:
             alias = experiment_run.data.tags["alias"]
         else:
-            alias = "Alias Not found"
+            alias = "null"
         return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
@@ -201,7 +201,7 @@ class MlflowInterface():
         if "alias" in experiment_run.data.tags:
             alias = experiment_run.data.tags["alias"]
         else:
-            alias = "Alias Not found"
+            alias = "null"
         return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
