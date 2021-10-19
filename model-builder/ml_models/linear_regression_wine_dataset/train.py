@@ -11,10 +11,12 @@ from sklearn.linear_model import ElasticNet
 from mlflow.tracking import MlflowClient
 from dotenv import load_dotenv
 # Get the current working directory
-sys.path.append(os.path.abspath('.'))
+sys.path.append(os.path.abspath('model-builder/'))
 
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
 from dataloader.querybuilder import QueryBuilder
+sys.path.append(os.path.abspath('.'))
+from model_class.wine_study import WineStudy
 
 import mlflow
 import mlflow.sklearn
@@ -24,7 +26,9 @@ class ElasticNetWrapper(mlflow.pyfunc.PythonModel):
           self.model = model
 
     def predict(self, context, model_input):
-        self.model.predict(model_input)
+        raw_data, raw_data_index = model_input[0], model_input[1]
+        raw_data = raw_data.drop(["quality"], axis=1)
+        return self.model.predict(raw_data).tolist()
 
 def eval_metrics(actual, pred):
     rmse = np.sqrt(mean_squared_error(actual, pred))
@@ -54,17 +58,16 @@ def get_mlflow_uris():
         return os.environ.get('MLFLOW_TRACKING_URI'), os.environ.get('MLFLOW_S3_ENDPOINT_URL'), os.environ.get('MLFLOW_EXPERIMENT_NAME')
 
 def import_data():
+    wine_study = WineStudy()
     postgres_data = get_postgres_data()
-    # Importing query builder
-    querybuilder = QueryBuilder(tablename=postgres_data["tablename"])
     # Read the wine-quality data from the Postgres database using dataloader
     # ADD DATABASE DETAILS HERE
     dbconn =  PostgresPandasWrapper(dbname=postgres_data["dbname"], user=postgres_data["user"], password=postgres_data["password"],host=postgres_data["host"], port=postgres_data["port"])
     dbconn.connect()
-    query = querybuilder.get_all_columns()
-    data = dbconn.get_response(query)
+    queries = wine_study.get_query_for_training()
+    data = dbconn.get_response(queries)
     dbconn.disconnect()
-    return data
+    return wine_study.preprocess_data(data)
 
 def split_data(data):
     # Split the data into training and test sets. (0.75, 0.25) split.
@@ -80,14 +83,14 @@ def split_data(data):
 def main():
     np.random.seed(42)
     args = argparser()
-    load_dotenv('ml_models/linear_regression_wine_dataset/.env')\
+    load_dotenv('model-builder/ml_models/linear_regression_wine_dataset/.env')
 
     linear_regression_prediction_conda={'channels': ['defaults'],
      'name':'linear_regression_prediction_conda',
      'dependencies': [ 'python=3.8', 'pip',
      {'pip':['mlflow','scikit-learn','cloudpickle','pandas','numpy']}]}
 
-    data = import_data()
+    data, data_index = import_data()
     mlflow_tracking_uri, mlflow_registry_uri, mlflow_experiment_name = get_mlflow_uris()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     #Set experiment
@@ -99,7 +102,7 @@ def main():
     l1_ratio = float(args.l1_ratio)
     num_iterations = int(args.num_iterations)
 
-    with mlflow.start_run():
+    with mlflow.start_run(tags={"alias":"elasticnetws"}):
         lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42, max_iter=num_iterations)
         lr.fit(train_x, train_y)
 

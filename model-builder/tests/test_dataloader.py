@@ -50,12 +50,24 @@ class TestPostgresPandasWrapper(unittest.TestCase):
         self.querybuilder = QueryBuilder("test")
         self.queries = [self.querybuilder.get_all_columns()]
         self.expected = [pd.DataFrame([{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}])]
+        self.expected_after_inserting = [pd.DataFrame([{"id": 1, "value": "hello"}, {"id": 2, "value": "ciao"}, {"id": 3, "value": "Hallo"}, {"id": 4, "value": "Bonjour"}])]
 
     def test_get_response(self):
         dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
         dbconn.connect()
         responses=dbconn.get_response(self.queries)
         for response, expected_instance in zip(responses, self.expected):
+            assert_frame_equal(response, expected_instance)
+        dbconn.disconnect()
+
+    def test_insert_data(self):
+        dbconn = PostgresPandasWrapper(dbname=self.name, port=self.port)
+        dbconn.connect()
+        dataframe = pd.DataFrame([{"id": 3, "value": "Hallo"}, {"id": 4, "value": "Bonjour"}])
+        responses=dbconn.insert_data(dataframe, "test")
+        # Checking response
+        responses = dbconn.get_response(self.queries)
+        for response, expected_instance in zip(responses, self.expected_after_inserting):
             assert_frame_equal(response, expected_instance)
         dbconn.disconnect()
 

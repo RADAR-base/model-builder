@@ -9,5 +9,5 @@ boto3
 sqlalchemy
 testing.postgresql
 psycopg2-binary
-torch==1.7.1
+torch
 conda

@@ -2,6 +2,7 @@ from model_class import  ModelClass
 import pandas as pd
 from datetime import  timedelta
 import datetime
+from datetime import datetime as dt
 import numpy as np
 
 class LungStudy(ModelClass):
@@ -118,26 +119,27 @@ class LungStudy(ModelClass):
             "CAT_SCORE" as cat_score \
             from "QUESTIONNAIRE_CAT_SCORE_STREAM"'''
 
+        self.inference_table_name = "inference"
+        self.project_id = "RALPMH-COPD-Lon-s1"
 
     def get_query_for_training(self):
         final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                         NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                         NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                         NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
-                        NATURAL LEFT JOIN ( {self.grouped_activity}) as activity'''
-
+                        NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
+                        where pid = '{self.project_id}' '''
         return [final_query, self.sleep_activity, self.cat_score_retrieve_query]
 
 
-    def get_query_for_prediction(self, user_id, starttime, endtime):
-
+    def get_query_for_prediction(self, user_id, project_id, starttime, endtime):
         if starttime is None and endtime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' '''
         elif starttime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
@@ -145,25 +147,27 @@ class LungStudy(ModelClass):
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                                 NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND time < '{endtime}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' AND time < '{endtime}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time < '{endtime}' '''
         elif endtime is None:
+            starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND time >= '{starttime}' '''
-            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' '''
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime_with_lag}' '''
         else:
+            starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
-                            where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
+                            where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
 
-            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime}' and time < '{endtime}' '''
+            sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
 
         cat_score_retrieve_query = f'''SELECT * from ({self.cat_score_retrieve_query}) as cat_score where uid = '{user_id}' '''
         print(sleep_activity_query, cat_score_retrieve_query)
@@ -206,7 +210,7 @@ class LungStudy(ModelClass):
 
         # Inclusion criterion - CAT > 5 not include that. if CAT score not available, go upto 7 previous day.else discard the data
         prepared_data = prepared_data[prepared_data["cat_score"] <= 5]
-        aggregated_data = prepared_data.groupby(["uid", "date"]).apply(self._aggregate)
+        aggregated_data = prepared_data.groupby(["uid", "date", "pid"]).apply(self._aggregate)
         return aggregated_data.reset_index()
 
     def _aggregate_sleep(self, row):
@@ -265,8 +269,8 @@ class LungStudy(ModelClass):
                     current_window_size = 1
                 else:
                     if current_window_size + 1 == self.window_size:
-                        dataset.append(df.iloc[idx - self.window_size + 1: idx + 1, 3:].values)
-                        indexer[index_record] = (df.iloc[idx, 0], df.iloc[idx, 1])
+                        dataset.append(df.iloc[idx - self.window_size + 1: idx + 1, 4:].values)
+                        indexer[index_record] = (df.iloc[idx, 0], df.iloc[idx, 1], df.iloc[idx, 2])
                         index_record += 1
                         last_value = value
                     else:
@@ -305,9 +309,23 @@ class LungStudy(ModelClass):
         # Merging hourly sleep data with hourly data
         hourly_data = hourly_data.merge(hourly_sleep_data, on=["uid", "hour", "date"], how="left").fillna(-1)
         daily_aggregate_data = self._aggregate_to_daily_data(hourly_data)
+        if daily_aggregate_data.empty:
+            return None
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
         if windowed_data.shape[0] == 0:
             return None
         # Currently dropping window but might be usefull in the future.
         # daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
         return windowed_data, windowed_data_index
+
+    def create_return_obj(self, indexes, model_name, model_version, alias, inference_result):
+        dateTimeObj = dt.now(tz=None)
+        return_obj = pd.DataFrame.from_dict(indexes, orient="index", columns=["uid", "date", "pid"])
+        return_obj["invocation_result"] = [{"anamoly_detected": result} for result in inference_result]
+        return_obj["model_name"] = model_name
+        return_obj["model_version"] = model_version
+        return_obj["alias"] = alias
+        return_obj["timestamp"] = dateTimeObj.timestamp()
+        return_obj["window_size"] = self.window_size
+        return_obj['invocation_result'] = return_obj.invocation_result.map(self.dict2json)
+        return return_obj

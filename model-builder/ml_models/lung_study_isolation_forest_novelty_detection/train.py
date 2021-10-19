@@ -80,7 +80,7 @@ def main():
     n_estimator = args.n_estimator
     train_x, train_x_index =  import_data()
     train_x = train_x.reshape(train_x.shape[0], -1)
-    with mlflow.start_run():
+    with mlflow.start_run(tags={"alias":"rfad"}):
         est = IsolationForest(n_estimators=n_estimator)
         est.fit(train_x)
         #Returns -1 for outliers and 1 for inliers.
@@ -89,7 +89,7 @@ def main():
         mlflow.log_param("n_estimator", n_estimator)
         mlflow.log_param("Estimated Threshold", threshold)
         mlflow.log_metric("total_anamolies_detected", np.sum(detected_anamoly == -1))
-        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=IsolationForestWrapper(model=est, threshold=threshold), conda_env=isolation_forest_conda_env)
+        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=IsolationForestWrapper(model=est, threshold=threshold), registered_model_name=mlflow_experiment_name, conda_env=isolation_forest_conda_env)
 
 if __name__ == "__main__":
     main()

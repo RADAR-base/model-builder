@@ -11,6 +11,10 @@ sys.path.insert(1, '..')
 from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
 from model_class import ModelClass
 import importlib
+from sqlalchemy.exc import DataError, DBAPIError
+from requests.exceptions import ConnectionError
+from botocore.exceptions import EndpointConnectionError, ClientError
+
 class MlflowInterface():
 
     def __init__(self):
@@ -27,16 +31,31 @@ class MlflowInterface():
 
     def _get_postgres_data(self):
         self.postgres_data = {}
+        self.postgres_inference_data = {}
         self.postgres_data["user"] = os.environ.get('POSTGRES_USER')
         self.postgres_data["password"] = os.environ.get('POSTGRES_PASS')
         self.postgres_data["host"] = os.environ.get('POSTGRES_HOST')
         self.postgres_data["port"] = os.environ.get('POSTGRES_PORT')
+        self.postgres_inference_data["user"] = os.environ.get('INFERENCE_POSTGRES_USER')
+        self.postgres_inference_data["password"] = os.environ.get('INFERENCE_POSTGRES_PASS')
+        self.postgres_inference_data["host"] = os.environ.get('INFERENCE_POSTGRES_HOST')
+        self.postgres_inference_data["port"] = os.environ.get('INFERENCE_POSTGRES_PORT')
 
     def _search_experiment_by_name(self, name):
-        experiment = self.client.get_experiment_by_name(name)
+        try:
+            experiment = self.client.get_experiment_by_name(name)
+        except ConnectionError:
+            raise HTTPException(502, f"Mlflow server error: cannot connect to mlflow server")
         if experiment is None:
             raise HTTPException(404, f"Experiment by name {name} does not exist")
         return experiment
+
+    def _search_model_version(self, run_id, experiment_id):
+        experiment_list = self.client.search_runs(experiment_id)
+        for i, run in enumerate(experiment_list):
+            if run.info.run_id == run_id:
+                return len(experiment_list) - i
+        raise HTTPException(404, f"Model not found")
 
     def _get_all_experiment_runs(self, experiment_id):
         return self.client.search_runs(experiment_id)
@@ -53,13 +72,20 @@ class MlflowInterface():
         all_runs = self._get_all_experiment_runs(experiment.experiment_id)
         if len(all_runs) < version:
             raise HTTPException(404, f"Version {version} of experiment {name} does not exist")
+        elif version <= 0:
+            raise HTTPException(400, f"Model version cannot be less than 1")
         else:
             return all_runs[len(all_runs) - version]
 
     def _mlflow_inference(self, model_run, df):
         if df is None:
             raise HTTPException(404, f"No data available for inference")
-        loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
+        try:
+            loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
+        except EndpointConnectionError:
+            raise HTTPException(502, f"Minio Server Error: Cannot access the registered model")
+        except ClientError as e:
+            raise HTTPException(502, f"Minio Server Error: {e}")
         return list(loaded_model.predict(df))
 
     def _convert_data_to_df(self, data):
@@ -76,16 +102,36 @@ class MlflowInterface():
 
 
     def _get_data_from_postgres(self, metadata):
-        postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_data)
+        try:
+            postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_data)
+            postgres.connect()
+            module = importlib.import_module(f"model_class.{metadata.filename}")
+            data_class = getattr(module, metadata.classname)
+            self.data_class_instance = data_class()
+            if not isinstance(self.data_class_instance, ModelClass):
+                raise HTTPException(400, f"Requested class is not an instance of ModelClass")
+            queries = self.data_class_instance.get_query_for_prediction(metadata.user_id, metadata.project_id, metadata.starttime, metadata.endtime)
+            raw_data = postgres.get_response(queries)
+        except ModuleNotFoundError as e:
+            raise HTTPException(400, f"{e}")
+        except AttributeError as e:
+            raise HTTPException(400, f"{e}")
+        except DBAPIError as e:
+            raise HTTPException(400, f"{e}")
+        return self.data_class_instance.preprocess_data(raw_data)
+
+    def _insert_inference_data_in_postgres(self, metadata, inference_data):
+        postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_inference_data)
         postgres.connect()
         module = importlib.import_module(f"model_class.{metadata.filename}")
         data_class = getattr(module, metadata.classname)
         data_class_instance = data_class()
         if not isinstance(data_class_instance, ModelClass):
             raise HTTPException(400, f"Requested class is not an instance of ModelClass")
-        queries = data_class_instance.get_query_for_prediction(metadata.user_id, metadata.starttime, metadata.endtime)
-        raw_data = postgres.get_response(queries)
-        return data_class_instance.preprocess_data(raw_data)
+        try:
+            postgres.insert_data(inference_data, data_class_instance.inference_table_name)
+        except DataError:
+            raise HTTPException(500, f"Cannot upload infernece result to postgres db")
 
 
     def get_inference(self, name, version, data):
@@ -93,37 +139,70 @@ class MlflowInterface():
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 
-    def get_inference_with_metadata(self, name, version, metadata):
+    def get_inference_with_metadata(self, name, version, metadata, upload):
         experiment_run = self.get_model_version_info(name, version)
         df = self._get_data_from_postgres(metadata)
-        return self._mlflow_inference(experiment_run, df)
+        inference = self._mlflow_inference(experiment_run, df)
+        if "alias" in experiment_run.data.tags:
+            alias = experiment_run.data.tags["alias"]
+        else:
+            alias = "null"
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
+        if upload:
+            self._insert_inference_data_in_postgres(metadata, return_obj)
+        return return_obj.to_dict(orient='records')
 
-    def _get_best_model(self, name):
+    def _get_best_model(self, name, metric):
         experiment = self._search_experiment_by_name(name)
-        best_model = self.client.search_runs(experiment.experiment_id, order_by=["metrics.m DESC"])[0]
-        return best_model
+        metrics_list = list(self.client.search_runs(experiment.experiment_id)[0].data.metrics)
+        if metric == None:
+            metric = metrics_list[0]
+        else:
+            if metric not in metrics_list:
+                raise HTTPException(404, f"{metric} metric is not a part of the model")
+        best_model = self.client.search_runs(experiment.experiment_id, order_by=[f"metrics.{metrics_list[0]} ASC"])[0]
+        version = self._search_model_version(best_model.info.run_id, experiment.experiment_id)
+        return best_model, version
 
-    def get_inference_from_best_model(self, name, data):
-        experiment_run = self._get_best_model(name)
+    def get_inference_from_best_model(self, name, data, metric):
+        experiment_run = self._get_best_model(name, metric)
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 
-    def get_inference_from_best_model_with_metadata(self, name, metadata):
-        experiment_run = self._get_best_model(name)
+    def get_inference_from_best_model_with_metadata(self, name, metadata, metric, upload):
+        experiment_run, version = self._get_best_model(name, metric)
         df = self._get_data_from_postgres(metadata)
-        return self._mlflow_inference(experiment_run, df)
+        inference = self._mlflow_inference(experiment_run, df)
+        if "alias" in experiment_run.data.tags:
+            alias = experiment_run.data.tags["alias"]
+        else:
+            alias = "null"
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
+        if upload:
+            self._insert_inference_data_in_postgres(metadata, return_obj)
+        return return_obj.to_dict(orient='records')
 
     def _get_latest_model(self, name):
         experiment = self._search_experiment_by_name(name)
-        latest_model = self._get_all_experiment_runs(experiment.experiment_id)[0]
-        return latest_model
+        all_experiments = self._get_all_experiment_runs(experiment.experiment_id)
+        latest_model = all_experiments[0]
+        version = len(all_experiments)
+        return latest_model, version
 
     def get_inference_from_latest_model(self, name, data):
         experiment_run = self._get_latest_model(name)
         df = self._convert_data_to_df(data)
         return self._mlflow_inference(experiment_run, df)
 
-    def get_inference_from_latest_model_with_metadata(self, name, metadata):
-        experiment_run = self._get_latest_model(name)
+    def get_inference_from_latest_model_with_metadata(self, name, metadata, upload):
+        experiment_run, version = self._get_latest_model(name)
         df = self._get_data_from_postgres(metadata)
-        return self._mlflow_inference(experiment_run, df)
+        inference = self._mlflow_inference(experiment_run, df)
+        if "alias" in experiment_run.data.tags:
+            alias = experiment_run.data.tags["alias"]
+        else:
+            alias = "null"
+        return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
+        if upload:
+            self._insert_inference_data_in_postgres(metadata, return_obj)
+        return return_obj.to_dict(orient='records')

@@ -2,7 +2,8 @@ name: linear_regression_remote_example
 channels:
   - defaults
 dependencies:
+  - python=3.8
+  - pip
   - pip:
-    - -r file:requirements.txt
-    - mlflow
-    - -r file:../../requirements.txt
+    - -r requirements.txt
+    - -r ../../requirements.txt
