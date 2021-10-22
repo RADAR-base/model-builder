@@ -63,7 +63,10 @@ def import_data():
     query = lung_study.get_query_for_training()
     data = dbconn.get_response(query)
     dbconn.disconnect()
-    return lung_study.preprocess_data(data)
+    processed_data = lung_study.preprocess_data(data)
+    if processed_data is None:
+        raise ValueError("Not enough data for training")
+    return processed_data
 
 def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
     model = model.to(device)
@@ -140,7 +143,12 @@ def main():
     mlflow.set_tracking_uri(mlflow_tracking_uri)
     mlflow.set_experiment(mlflow_experiment_name)
 
-    dataset, dataset_index = import_data()
+    try:
+        dataset, dataset_index = import_data()
+    except ValueError as e:
+        with mlflow.start_run(tags={"alias":"lstmad"}):
+            mlflow.set_tag("LOG_STATUS", f"FAILED: {e}")
+            sys.exit(1)
 
     num_layers = args.num_layers
     latent_dim = args.latent_dim

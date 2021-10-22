@@ -60,7 +60,10 @@ def import_data():
     queries = lung_study.get_query_for_training()
     data = dbconn.get_response(queries)
     dbconn.disconnect()
-    return lung_study.preprocess_data(data)
+    processed_data = lung_study.preprocess_data(data)
+    if processed_data is None:
+        raise ValueError("Not enough data for training")
+    return processed_data
 
 def main():
     np.random.seed(42)
@@ -78,7 +81,12 @@ def main():
     mlflow.set_experiment(mlflow_experiment_name)
 
     n_estimator = args.n_estimator
-    train_x, train_x_index =  import_data()
+    try:
+        train_x, train_x_index =  import_data()
+    except ValueError as e:
+        with mlflow.start_run(tags={"alias":"rfad"}):
+            mlflow.set_tag("LOG_STATUS", f"FAILED: {e}")
+            sys.exit(1)
     train_x = train_x.reshape(train_x.shape[0], -1)
     with mlflow.start_run(tags={"alias":"rfad"}):
         est = IsolationForest(n_estimators=n_estimator)
@@ -86,6 +94,7 @@ def main():
         #Returns -1 for outliers and 1 for inliers.
         detected_anamoly = est.predict(train_x)
         threshold = min(est.score_samples(train_x))
+        mlfow.set_tag("LOG_STATUS", f"Successful")
         mlflow.log_param("n_estimator", n_estimator)
         mlflow.log_param("Estimated Threshold", threshold)
         mlflow.log_metric("total_anamolies_detected", np.sum(detected_anamoly == -1))

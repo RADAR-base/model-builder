@@ -312,7 +312,7 @@ class LungStudy(ModelClass):
         if daily_aggregate_data.empty:
             return None
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
-        if windowed_data.shape[0] == 0:
+        if windowed_data.shape[0] <= 10:
             return None
         # Currently dropping window but might be usefull in the future.
         # daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
