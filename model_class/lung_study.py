@@ -125,7 +125,7 @@ class LungStudy(ModelClass):
     def get_query_for_training(self):
         final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                         NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
-                        NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                        NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                         NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                         NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                         where pid = '{self.project_id}' '''
@@ -136,7 +136,7 @@ class LungStudy(ModelClass):
         if starttime is None and endtime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
-                            NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                            NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND pid = '{project_id}' '''
@@ -144,8 +144,8 @@ class LungStudy(ModelClass):
         elif starttime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
-                            NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
-                                NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
+                            NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
+                            NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND pid = '{project_id}' AND time < '{endtime}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time < '{endtime}' '''
@@ -153,7 +153,7 @@ class LungStudy(ModelClass):
             starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
-                            NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                            NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' '''
@@ -162,7 +162,7 @@ class LungStudy(ModelClass):
             starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
-                            NATURAL JOIN ( {self.query_pulse} ) AS query_pulse \
+                            NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
                             where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
@@ -281,12 +281,11 @@ class LungStudy(ModelClass):
     def _check_completion(self, hourly_data):
         # Including the completeness of the HR, pulse OX and body battery data as inclusion
         ## Only accept reasonable count of values per hour - 25% in all cases, pulse - 1, respiration - 1
-        hourly_data = hourly_data[(hourly_data["heartrate_count"] >= 60) & (hourly_data["pulse_count"] >= 1)
-                                & (hourly_data["body_battery_count"] >= 18) & (hourly_data["respiration_count"] >= 1)].reset_index(drop=True)
+        hourly_data = hourly_data[(hourly_data["heartrate_count"] >= 60) & (hourly_data["body_battery_count"] >= 18)
+                    & (hourly_data["respiration_count"] >= 1)].reset_index(drop=True)
         # for HR at least 8 hours in a day, pulse Ox at least 6 hours and body battery at least 8 hours, respiration = 6
         prepared_data_hourly_count = hourly_data.groupby(['uid', "date"]).agg({"heartrate_count": "count", "pulse_count": "count", "body_battery_count": "count", "respiration_count": "count"}).reset_index()
-        acceptible_values = prepared_data_hourly_count[(prepared_data_hourly_count["heartrate_count"] >= 8) & (prepared_data_hourly_count["pulse_count"] >= 6)
-                                    & (prepared_data_hourly_count["body_battery_count"] >= 8)  & (prepared_data_hourly_count["respiration_count"] >= 6)]
+        acceptible_values = prepared_data_hourly_count[(prepared_data_hourly_count["heartrate_count"] >= 8) & (prepared_data_hourly_count["body_battery_count"] >= 8)  & (prepared_data_hourly_count["respiration_count"] >= 6)]
         hourly_data = hourly_data[(hourly_data["uid"].isin(acceptible_values["uid"])) & (hourly_data["date"].isin(acceptible_values["date"]))].reset_index(drop=True)
         return hourly_data
 
