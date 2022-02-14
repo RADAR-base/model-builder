@@ -72,14 +72,16 @@ class LSTMLungStudyWrapper(mlflow.pyfunc.PythonModel):
         self.model.eval()
         criterion = nn.L1Loss(reduction='mean', reduce=False).to(device)
         predictions  = []
+        predicted_vectors = []
         for seq_true in dataloader:
             y_true = seq_true[:,-1,:]
             seq_true = seq_true.to(device)
             seq_pred = self.model(seq_true)
             loss = criterion(seq_pred, y_true)
             loss = torch.mean(loss, 1)
+            predicted_vectors += seq_pred.tolist()
             predictions+= (loss < self.threshold).tolist()
-        return predictions
+        return predictions, predicted_vectors
 
 
     def predict(self, context, model_input):

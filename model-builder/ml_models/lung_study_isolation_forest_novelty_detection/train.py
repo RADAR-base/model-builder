@@ -94,7 +94,7 @@ def main():
         #Returns -1 for outliers and 1 for inliers.
         detected_anamoly = est.predict(train_x)
         threshold = min(est.score_samples(train_x))
-        mlfow.set_tag("LOG_STATUS", f"Successful")
+        mlflow.set_tag("LOG_STATUS", f"Successful")
         mlflow.log_param("n_estimator", n_estimator)
         mlflow.log_param("Estimated Threshold", threshold)
         mlflow.log_metric("total_anamolies_detected", np.sum(detected_anamoly == -1))

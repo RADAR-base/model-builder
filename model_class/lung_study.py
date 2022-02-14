@@ -170,7 +170,6 @@ class LungStudy(ModelClass):
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
 
         cat_score_retrieve_query = f'''SELECT * from ({self.cat_score_retrieve_query}) as cat_score where uid = '{user_id}' '''
-        print(sleep_activity_query, cat_score_retrieve_query)
         return [final_query, sleep_activity_query, cat_score_retrieve_query]
 
     def _concat_aggregated_data(self, aggregated_data):
@@ -289,13 +288,14 @@ class LungStudy(ModelClass):
         hourly_data = hourly_data[(hourly_data["uid"].isin(acceptible_values["uid"])) & (hourly_data["date"].isin(acceptible_values["date"]))].reset_index(drop=True)
         return hourly_data
 
-    def preprocess_data(self, raw_data):
+    def preprocess_data(self, raw_data, is_inference=False):
         hourly_data, sleep_data, cat_score = raw_data
         # Handle missing (NA) data
         if hourly_data.empty:
             return None
         hourly_data = self._check_completion(hourly_data)
         hourly_data = hourly_data.fillna(-1)
+        print(hourly_data.shape)
         # Merging CAT data with hourly data.
         hourly_data = hourly_data.merge(cat_score[["uid", "date", "cat_score"]], on=["uid", "date"], how="left")
         hourly_data = hourly_data.sort_values(by=["uid", "date"]).reset_index(drop=True)
@@ -308,19 +308,25 @@ class LungStudy(ModelClass):
         # Merging hourly sleep data with hourly data
         hourly_data = hourly_data.merge(hourly_sleep_data, on=["uid", "hour", "date"], how="left").fillna(-1)
         daily_aggregate_data = self._aggregate_to_daily_data(hourly_data)
+        print(daily_aggregate_data.shape)
         if daily_aggregate_data.empty:
             return None
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
-        if windowed_data.shape[0] <= 10:
+        if windowed_data.shape[0] <= 10 and not is_inference:
             return None
         # Currently dropping window but might be usefull in the future.
         # daily_aggregate_data = daily_aggregate_data.drop(['uid', 'window_end_date', 'level_2'],axis=1 )
         return windowed_data, windowed_data_index
 
-    def create_return_obj(self, indexes, model_name, model_version, alias, inference_result):
+    def create_return_obj(self, indexes, model_name, model_version, alias, inference_results):
         dateTimeObj = dt.now(tz=None)
         return_obj = pd.DataFrame.from_dict(indexes, orient="index", columns=["uid", "date", "pid"])
-        return_obj["invocation_result"] = [{"anamoly_detected": result} for result in inference_result]
+        # check if infererence_results is  a tuple
+        if isinstance(inference_results, tuple):
+            return_obj["invocation_result"] = [{"anomaly_detected": result[0], "output_vector": result[1]} for result in zip(*inference_results)]
+        else:
+            return_obj["invocation_result"] = [{"anomaly_detected": result} for result in inference_results]
+
         return_obj["model_name"] = model_name
         return_obj["model_version"] = model_version
         return_obj["alias"] = alias

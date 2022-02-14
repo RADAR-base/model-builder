@@ -86,7 +86,7 @@ class MlflowInterface():
             raise HTTPException(502, f"Minio Server Error: Cannot access the registered model")
         except ClientError as e:
             raise HTTPException(502, f"Minio Server Error: {e}")
-        return list(loaded_model.predict(df))
+        return loaded_model.predict(df)
 
     def _convert_data_to_df(self, data):
         data_format = data.format
@@ -118,7 +118,7 @@ class MlflowInterface():
             raise HTTPException(400, f"{e}")
         except DBAPIError as e:
             raise HTTPException(400, f"{e}")
-        return self.data_class_instance.preprocess_data(raw_data)
+        return self.data_class_instance.preprocess_data(raw_data, is_inference=True)
 
     def _insert_inference_data_in_postgres(self, metadata, inference_data):
         postgres = PostgresPandasWrapper(dbname=metadata.dbname, **self.postgres_inference_data)
@@ -133,6 +133,12 @@ class MlflowInterface():
         except DataError:
             raise HTTPException(500, f"Cannot upload infernece result to postgres db")
 
+    def _refine_return_obj(self, return_obj):
+        # string to dictonary invocation_result column series
+        return_obj["invocation_result"] = return_obj["invocation_result"].apply(lambda x: json.loads(x))
+        # Removing output_vector from invocation_result column dictionary if output_vector is available
+        return_obj["invocation_result"].apply(lambda x: x if "output_vector" not in x else x.pop("output_vector"))
+        return return_obj
 
     def get_inference(self, name, version, data):
         experiment_run = self.get_model_version_info(name, version)
@@ -150,6 +156,7 @@ class MlflowInterface():
         return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
+        return_obj = self._refine_return_obj(return_obj)
         return return_obj.to_dict(orient='records')
 
     def _get_best_model(self, name, metric):
@@ -180,6 +187,7 @@ class MlflowInterface():
         return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
+        return_obj = self._refine_return_obj(return_obj)
         return return_obj.to_dict(orient='records')
 
     def _get_latest_model(self, name):
@@ -205,4 +213,5 @@ class MlflowInterface():
         return_obj = self.data_class_instance.create_return_obj(df[1], name, version, alias, inference)
         if upload:
             self._insert_inference_data_in_postgres(metadata, return_obj)
+        return_obj = self._refine_return_obj(return_obj)
         return return_obj.to_dict(orient='records')
