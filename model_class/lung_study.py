@@ -140,6 +140,7 @@ class LungStudy(ModelClass):
 
         self.daily_activity_query = f'''SELECT "userId" as uid, \
             "projectId" as pid, \
+            "time" as time,\
             "date" as date,\
             "duration", \
             "steps", \
@@ -343,14 +344,14 @@ class LungStudy(ModelClass):
 
     def _convert_stress_qualifier_to_classes(self, stress_qualifier:pd.Series):
         classes = ["unknown", "calm", "balanced", "stressful", "very_stressful", "calm_awake", "balanced_awake", "stressful_awake", "very_stressful_awake"]
-        one_hot = pd.get_dummies(stress_qualifier, columns=classes, prefix="stressQualifier")
+        one_hot = pd.get_dummies(stress_qualifier.astype(pd.CategoricalDtype(categories=classes)), columns=classes, prefix="stressQualifier")
         one_hot = one_hot.drop("stressQualifier_unknown", axis=1)
         return one_hot
 
     def _preprocess_daily_activity_summary(self, daily_activity_summary):
         daily_activity_summary['date'] = pd.to_datetime(daily_activity_summary['date'])
         one_hot = self._convert_stress_qualifier_to_classes(daily_activity_summary['stressQualifier'])
-        daily_activity_summary = daily_activity_summary.join(one_hot).drop("stressQualifier", axis=1)
+        daily_activity_summary = daily_activity_summary.join(one_hot).drop(["stressQualifier", "time"], axis=1)
         daily_activity_summary = daily_activity_summary.fillna(-1)
         return daily_activity_summary
 

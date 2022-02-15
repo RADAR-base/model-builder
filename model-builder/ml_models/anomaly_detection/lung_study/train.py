@@ -13,8 +13,9 @@ from dataloader.postgres_pandas_wrapper import PostgresPandasWrapper
 from dataloader.querybuilder import QueryBuilder
 sys.path.append(os.path.abspath('.'))
 from model_class.lung_study import  LungStudy
-from ml_models.anamoly_detection.lstm import LSTM, LSTMLungStudyWrapper, LSTMAnomalyDataset
-from ml_models.anamoly_detection.utils import fig2data, result_plot
+from ml_models.anomaly_detection.lstm_attention import RecurrentAutoencoder, LSTMAnomalyDataset
+from ml_models.anomaly_detection.lung_study.wrapper import LSTMLungStudyWrapper
+from ml_models.anomaly_detection.utils import fig2data, result_plot
 from torch.utils.data import Subset
 from sklearn.model_selection import train_test_split
 import mlflow
@@ -23,14 +24,15 @@ from torch.utils.data import DataLoader
 import torch
 from torch import nn
 import time
-
+import copy
 import mlflow.pyfunc
 
 
 
 def argparser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num_layers", default=5)
+    parser.add_argument("--enc_layer", default=3)
+    parser.add_argument("--dec_layer", default=3)
     parser.add_argument("--latent_dim", default=128)
     parser.add_argument("--epochs", default=50)
     parser.add_argument("--batch_size", default=8)
@@ -71,10 +73,12 @@ def import_data():
 def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
     model = model.to(device)
     model.train()
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    optimizer = torch.optim.Adam(model.parameters())
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, lr, epochs=n_epochs, steps_per_epoch=len(train_dataset))
 
-    criterion = nn.L1Loss(reduction='mean').to(device)
+    criterion = nn.L1Loss(reduction='sum').to(device)
     history = dict(train_loss=[], val_loss=[])
+    best_loss = np.inf
     for epoch in range(1 , n_epochs + 1):
         model = model.train()
         ts = time.time()
@@ -88,6 +92,7 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
             loss = criterion(seq_pred, y_true)
             loss.backward()
             optimizer.step()
+            scheduler.step()
 
             train_losses.append(loss.item())
 
@@ -104,8 +109,8 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
                 val_losses.append(loss.item())
 
         te = time.time()
-        train_loss = np.mean(train_losses)
-        val_loss = np.mean(val_losses)
+        train_loss = np.sum(train_losses) / len(train_dataset.dataset)
+        val_loss = np.sum(val_losses) / len(val_dataset.dataset)
         mlflow.log_metric("training_loss", train_loss, step=epoch)
         mlflow.log_metric("validation_loss", val_loss, step=epoch)
         history['train_loss'].append(train_loss)
@@ -113,7 +118,11 @@ def train_model( train_dataset, val_dataset, model, device, n_epochs, lr):
 
         print(f"Epoch: {epoch}  train loss: {train_loss}  val loss: {val_loss}  time: {te-ts} ")
 
-    return val_loss, history
+        if val_loss < best_loss:
+            best_loss = val_loss
+            best_model_wts = copy.deepcopy(model.state_dict())
+
+    return best_model_wts, val_loss, history
 
 def train_val_dataset(dataset, dataset_index, val_split=0.25):
     train_idx, val_idx = train_test_split(list(range(len(dataset))), test_size=val_split)
@@ -137,7 +146,7 @@ def main():
     lstm_conda_env={'channels': ['defaults'],
      'name':'lstm_conda_env',
      'dependencies': [ 'python=3.8', 'pip',
-     {'pip':['mlflow','torch==1.7.1','cloudpickle','pandas','numpy', 'torchvision']}]}
+     {'pip':['mlflow','torch==1.10.2','cloudpickle','pandas','numpy', 'torchvision']}]}
 
     mlflow_tracking_uri, mlflow_registry_uri, mlflow_experiment_name = get_mlflow_uris()
     mlflow.set_tracking_uri(mlflow_tracking_uri)
@@ -150,7 +159,8 @@ def main():
             mlflow.set_tag("LOG_STATUS", f"FAILED: {e}")
             sys.exit(1)
 
-    num_layers = args.num_layers
+    enc_layers = args.enc_layer
+    dec_layers = args.dec_layer
     latent_dim = args.latent_dim
     input_dim = dataset.shape[1]
     input_dimensionality = dataset.shape[2]
@@ -163,7 +173,8 @@ def main():
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size)
 
     with mlflow.start_run(tags={"alias":"lstmad"}) as run:
-        mlflow.log_param("num_layers", num_layers)
+        mlflow.log_param("enc_layers", enc_layers)
+        mlflow.log_param("dec_layers", dec_layers)
         mlflow.log_param("latent_dim", latent_dim)
         mlflow.log_param("input_dim", input_dim)
         mlflow.log_param("input_dimensionality", input_dimensionality)
@@ -171,12 +182,13 @@ def main():
         mlflow.log_param("lr", lr)
         mlflow.log_param("device", device)
 
-        lstm = LSTM(input_dimensionality, input_dim, latent_dim, num_layers)
-        threshold, history = train_model( train_dataloader, val_dataloader, lstm, device, epochs, lr)
+        lstm = RecurrentAutoencoder(input_dim, input_dimensionality, latent_dim, enc_layers, dec_layers)
+        best_model_wts, threshold, history = train_model( train_dataloader, val_dataloader, lstm, device, epochs, lr)
+        best_model = RecurrentAutoencoder(input_dim, input_dimensionality, latent_dim, enc_layers, dec_layers)
+        best_model.load_state_dict(best_model_wts)
         mlflow.log_image(fig2data(result_plot(history)), "result_plot.png")
         mlflow.log_param("Estimated Threshold", threshold)
-
-        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=LSTMLungStudyWrapper(model=lstm, threshold=threshold), conda_env=lstm_conda_env, registered_model_name=mlflow_experiment_name, code_path=["model-builder/ml_models/anomaly_detection/lstm.py"])
+        mlflow.pyfunc.log_model(artifact_path=mlflow_experiment_name, python_model=LSTMLungStudyWrapper(model=best_model, threshold=threshold), conda_env=lstm_conda_env, registered_model_name=mlflow_experiment_name, code_path=["model-builder/ml_models/anomaly_detection/lstm.py"])
 
 if __name__ == "__main__":
     main()
