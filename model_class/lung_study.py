@@ -86,6 +86,25 @@ class LungStudy(ModelClass):
             "SKEW" as respiration_skew \
             from "PUSH_GARMIN_RESPIRATION_TIMESTAMP_LONG_WINDOWED_1H_TABLE"'''
 
+        self.query_stress = '''SELECT "PROJECTID"  as pid, \
+            "USERID" as uid, \
+            "SOURCEID"  as sid,\
+            to_timestamp("TIME"  / 1000 )   as time,\
+            extract(hour from to_timestamp("TIME" / 1000)) as hour,\
+            date(to_timestamp("TIME"  / 1000 ) ) as date,\
+            to_timestamp("WINDOW_START" / 1000 ) as window_start,\
+            to_timestamp("WINDOW_END" / 1000 )  as window_end,\
+            "COUNT" as stress_count,\
+            "MIN" as stress_min,\
+            "MAX" as stress_max,\
+            "MEAN" as stress_mean,\
+            "STDDEV" as stress_std,\
+            "MEDIAN" as stress_median,\
+            "MODE"  as stress_model,\
+            "IQR" as stress_iqr,\
+            "SKEW" as stress_skew \
+            from "PUSH_GARMIN_HEART_RATE_SAMPLE_TIMESTAMP_LONG_WINDOWED_1H_TABLE"'''
+
         self.query_activity = '''SELECT "projectId"  as pid, \
             "userId" as uid, \
             "sourceId"  as sid, \
@@ -119,6 +138,29 @@ class LungStudy(ModelClass):
             "CAT_SCORE" as cat_score \
             from "QUESTIONNAIRE_CAT_SCORE_STREAM"'''
 
+        self.daily_activity_query = f'''SELECT "userId" as uid, \
+            "projectId" as pid, \
+            "date" as date,\
+            "duration", \
+            "steps", \
+            "distance", \
+            "moderateIntensityDuration", \
+            "vigorousIntensityDuration", \
+            "minHeartRate", \
+            "averageHeartRate", \
+            "maxHeartRate", \
+            "restingHeartRate", \
+            "averageStressLevel", \
+            "maxStressLevel", \
+            "stressDuration", \
+            "restStressDuration", \
+            "activityStressDuration", \
+            "lowStressDuration", \
+            "mediumStressDuration", \
+            "highStressDuration", \
+            "stressQualifier" \
+            from "push_garmin_daily_summary" as daily_activity_summary'''
+
         self.inference_table_name = "inference"
         self.project_id = "RALPMH-COPD-Lon-s1"
 
@@ -128,8 +170,9 @@ class LungStudy(ModelClass):
                         NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                         NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                         NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
+                        NATURAL LEFT JOIN ( {self.query_stress}) as query_stress \
                         where pid = '{self.project_id}' '''
-        return [final_query, self.sleep_activity, self.cat_score_retrieve_query]
+        return [final_query, self.sleep_activity, self.cat_score_retrieve_query, self.daily_activity_query]
 
 
     def get_query_for_prediction(self, user_id, project_id, starttime, endtime):
@@ -139,16 +182,20 @@ class LungStudy(ModelClass):
                             NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
+                            NATURAL LEFT JOIN ( {self.query_stress}) as query_stress \
                             where uid = '{user_id}' AND pid = '{project_id}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' '''
+            daily_activity_query = f'''SELECT * from ({self.daily_activity_query}) as daily_activity_summary where uid = '{user_id}' '''
         elif starttime is None:
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
                             NATURAL JOIN ( {self.query_body_battery} ) AS query_body_battery \
                             NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
+                            NATURAL LEFT JOIN ( {self.query_stress}) as query_stress \
                             where uid = '{user_id}' AND pid = '{project_id}' AND time < '{endtime}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time < '{endtime}' '''
+            daily_activity_query = f'''SELECT * from ({self.daily_activity_query}) as daily_activity_summary where uid = '{user_id}' AND time < '{endtime}' '''
         elif endtime is None:
             starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
@@ -156,8 +203,10 @@ class LungStudy(ModelClass):
                             NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
+                            NATURAL LEFT JOIN ( {self.query_stress}) as query_stress \
                             where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' '''
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime_with_lag}' '''
+            daily_activity_query = f'''SELECT * from ({self.daily_activity_query}) as daily_activity_summary where uid = '{user_id}' AND time >= '{starttime_with_lag}' '''
         else:
             starttime_with_lag = starttime - timedelta(days=self.window_size - 1)
             final_query =f'''SELECT * FROM ( {self.query_heart}  )  AS query_heart \
@@ -165,12 +214,13 @@ class LungStudy(ModelClass):
                             NATURAL LEFT JOIN ( {self.query_pulse} ) AS query_pulse \
                             NATURAL JOIN ( {self.query_respiration} ) AS query_respiration \
                             NATURAL LEFT JOIN ( {self.grouped_activity}) as activity \
+                            NATURAL LEFT JOIN ( {self.query_stress}) as query_stress \
                             where uid = '{user_id}' AND pid = '{project_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
 
             sleep_activity_query = f'''SELECT * from ({self.sleep_activity}) as sleep_activity where uid = '{user_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
-
+            daily_activity_query = f'''SELECT * from ({self.daily_activity_query}) as daily_activity_summary where uid = '{user_id}' AND time >= '{starttime_with_lag}' and time < '{endtime}' '''
         cat_score_retrieve_query = f'''SELECT * from ({self.cat_score_retrieve_query}) as cat_score where uid = '{user_id}' '''
-        return [final_query, sleep_activity_query, cat_score_retrieve_query]
+        return [final_query, sleep_activity_query, cat_score_retrieve_query, daily_activity_query]
 
     def _concat_aggregated_data(self, aggregated_data):
         keys = aggregated_data.keys()
@@ -190,8 +240,10 @@ class LungStudy(ModelClass):
                     'body_battery_skew', 'pulse_count', 'pulse_min', 'pulse_max',
                     'pulse_mean', 'pulse_std', 'pulse_median', 'pulse_model', 'pulse_iqr',
                     'pulse_skew','respiration_count', 'respiration_min', 'respiration_max',
-                    'respiration_mean', 'respiration_std', 'respiration_median', 'respiration_model', 'respiration_iqr',
-                    'respiration_skew','activity_duration', 'activity_distance', 'activity_calories', 'activity_steps',
+                    'respiration_mean', 'respiration_std', 'respiration_median', 'respiration_model',
+                    'respiration_iqr', 'respiration_skew', "stress_count", 'stress_min', 'stress_max',
+                    'stress_mean', 'stress_std', 'stress_median', 'stress_model', 'stress_iqr',
+                    'stress_skew', 'activity_duration', 'activity_distance', 'activity_calories', 'activity_steps',
                     'light', 'rem', 'awake', 'deep', 'unmeasurable']
         hours = data['hour'].tolist()
         aggregated_data = {}
@@ -208,7 +260,7 @@ class LungStudy(ModelClass):
         # Currently replacing all the mising hour data with zero.
 
         # Inclusion criterion - CAT > 5 not include that. if CAT score not available, go upto 7 previous day.else discard the data
-        prepared_data = prepared_data[prepared_data["cat_score"] <= 5]
+        prepared_data = prepared_data[prepared_data["cat_score"] <= 20]
         aggregated_data = prepared_data.groupby(["uid", "date", "pid"]).apply(self._aggregate)
         return aggregated_data.reset_index()
 
@@ -253,6 +305,7 @@ class LungStudy(ModelClass):
     def _create_windowed_data(self, daily_aggregate_data):
         # Take aggregated daily data as input and  return windowed input.
         # TODO: What to do when data for a day is missing? - currently just skipping it
+        daily_aggregate_data = daily_aggregate_data.fillna(-1)
         daily_aggregate_data = daily_aggregate_data.sort_values(["uid", "date"])
         indexer = {}
         index_record = 0
@@ -288,14 +341,26 @@ class LungStudy(ModelClass):
         hourly_data = hourly_data[(hourly_data["uid"].isin(acceptible_values["uid"])) & (hourly_data["date"].isin(acceptible_values["date"]))].reset_index(drop=True)
         return hourly_data
 
+    def _convert_stress_qualifier_to_classes(self, stress_qualifier:pd.Series):
+        classes = ["unknown", "calm", "balanced", "stressful", "very_stressful", "calm_awake", "balanced_awake", "stressful_awake", "very_stressful_awake"]
+        one_hot = pd.get_dummies(stress_qualifier, columns=classes, prefix="stressQualifier")
+        one_hot = one_hot.drop("stressQualifier_unknown", axis=1)
+        return one_hot
+
+    def _preprocess_daily_activity_summary(self, daily_activity_summary):
+        daily_activity_summary['date'] = pd.to_datetime(daily_activity_summary['date'])
+        one_hot = self._convert_stress_qualifier_to_classes(daily_activity_summary['stressQualifier'])
+        daily_activity_summary = daily_activity_summary.join(one_hot).drop("stressQualifier", axis=1)
+        daily_activity_summary = daily_activity_summary.fillna(-1)
+        return daily_activity_summary
+
     def preprocess_data(self, raw_data, is_inference=False):
-        hourly_data, sleep_data, cat_score = raw_data
+        hourly_data, sleep_data, cat_score, daily_activity_summary = raw_data
         # Handle missing (NA) data
         if hourly_data.empty:
             return None
         hourly_data = self._check_completion(hourly_data)
         hourly_data = hourly_data.fillna(-1)
-        print(hourly_data.shape)
         # Merging CAT data with hourly data.
         hourly_data = hourly_data.merge(cat_score[["uid", "date", "cat_score"]], on=["uid", "date"], how="left")
         hourly_data = hourly_data.sort_values(by=["uid", "date"]).reset_index(drop=True)
@@ -308,7 +373,10 @@ class LungStudy(ModelClass):
         # Merging hourly sleep data with hourly data
         hourly_data = hourly_data.merge(hourly_sleep_data, on=["uid", "hour", "date"], how="left").fillna(-1)
         daily_aggregate_data = self._aggregate_to_daily_data(hourly_data)
-        print(daily_aggregate_data.shape)
+        daily_aggregate_data['date'] = pd.to_datetime(daily_aggregate_data['date'])
+        daily_activity_summary = self._preprocess_daily_activity_summary(daily_activity_summary)
+        # Merging daily activity summary with daily aggregate data on columns "uid", pid and "date"
+        daily_aggregate_data = daily_aggregate_data.merge(daily_activity_summary, on=["uid", "pid", "date"], how="left")
         if daily_aggregate_data.empty:
             return None
         windowed_data, windowed_data_index = self._create_windowed_data(daily_aggregate_data)
