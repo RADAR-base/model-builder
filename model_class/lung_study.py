@@ -260,8 +260,8 @@ class LungStudy(ModelClass):
         # How to handle missing daily data for each variables.
         # Currently replacing all the mising hour data with zero.
         if not is_inference:
-            # Inclusion criterion - CAT > 5 not include that. if CAT score not available, go upto 7 previous day.else discard the data
-            prepared_data = prepared_data[prepared_data["cat_score"] <= 5]
+            # Inclusion criterion - Include only if the change in CAT from median baseline is lesser than or equals 5. if CAT score not available, go upto 7 previous day.else discard the data
+            prepared_data = prepared_data[prepared_data["cat_score_change"] <= 5]
         aggregated_data = prepared_data.groupby(["uid", "date", "pid"]).apply(self._aggregate)
         return aggregated_data.reset_index()
 
@@ -357,14 +357,14 @@ class LungStudy(ModelClass):
 
     def _preprocess_cat_score(self, cat_score, is_inference):
         if not is_inference:
-            acceptible_uids = (cat_score.groupby('uid')['cat_score'].count() > 14).reset_index()
-            acceptible_uids_list = acceptible_uids[acceptible_uids['cat_score']]['uid'].tolist()
+            cat_count = cat_score.groupby('uid')['cat_score'].count()
+            acceptible_uids_list = list(cat_count[cat_count > 14].index)
             cat_score = cat_score[cat_score['uid'].isin(acceptible_uids_list)]
         approximated_cat_baseline = cat_score.groupby('uid')['cat_score'].apply(np.median)
         approximated_cat_baseline = approximated_cat_baseline.reset_index()
         approximated_cat_baseline = approximated_cat_baseline.rename({"cat_score":"baseline_cat_score"}, axis=1)
         cat_score = cat_score.merge(approximated_cat_baseline)
-        cat_score["cat_score"] = cat_score["cat_score"] - cat_score["baseline_cat_score"]
+        cat_score["cat_score_change"] = cat_score["cat_score"] - cat_score["baseline_cat_score"]
         return cat_score
 
     def preprocess_data(self, raw_data, is_inference=False):
@@ -377,12 +377,12 @@ class LungStudy(ModelClass):
         #Preprocessing cat score
         cat_score = self._preprocess_cat_score(cat_score, is_inference)
         # Merging CAT data with hourly data.
-        hourly_data = hourly_data.merge(cat_score[["uid", "date", "cat_score"]], on=["uid", "date"], how="left")
+        hourly_data = hourly_data.merge(cat_score[["uid", "date", "cat_score_change"]], on=["uid", "date"], how="left")
         hourly_data = hourly_data.sort_values(by=["uid", "date"]).reset_index(drop=True)
-        hourly_data["cat_score"] = hourly_data.groupby("uid")["cat_score"].ffill(limit=24*7)
+        hourly_data["cat_score_change"] = hourly_data.groupby("uid")["cat_score_change"].ffill(limit=24*7)
         # fillna cat score after filling in the missing values
         if not is_inference:
-            hourly_data.dropna(subset=["cat_score"]).reset_index(drop=True)
+            hourly_data.dropna(subset=["cat_score_change"]).reset_index(drop=True)
         # Converting sleep data to hourly sleep data
         hourly_sleep_data = self._convert_sleep_data_to_hourly(sleep_data)
         hourly_data["hour"] = hourly_data["hour"].astype(int)
