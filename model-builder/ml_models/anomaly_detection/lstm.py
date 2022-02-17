@@ -55,40 +55,6 @@ class LSTM(nn.Module):
         x = self.output_layer(x)
         return x
 
-class LSTMLungStudyWrapper(mlflow.pyfunc.PythonModel):
-
-    def __init__(self, model, threshold):
-          self.model = model
-          self.threshold = threshold
-
-    def _get_device(self):
-        if torch.cuda.is_available():
-            return "gpu"
-        else:
-            return "cpu"
-
-    def _predict(self, dataloader):
-        device = self._get_device()
-        self.model.eval()
-        criterion = nn.L1Loss(reduction='mean', reduce=False).to(device)
-        predictions  = []
-        for seq_true in dataloader:
-            y_true = seq_true[:,-1,:]
-            seq_true = seq_true.to(device)
-            seq_pred = self.model(seq_true)
-            loss = criterion(seq_pred, y_true)
-            loss = torch.mean(loss, 1)
-            predictions+= (loss < self.threshold).tolist()
-        return predictions
-
-
-    def predict(self, context, model_input):
-        raw_data, raw_data_index = model_input[0], model_input[1]
-        prediction_dataset = LSTMAnomalyDataset(raw_data, raw_data_index)
-        prediction_dataloader = DataLoader(prediction_dataset, batch_size=4)
-        return self._predict(prediction_dataloader)
-
-
 class LSTMAnomalyDataset(Dataset):
     def __init__(self, data, data_index):
         self.data = torch.FloatTensor(data)
