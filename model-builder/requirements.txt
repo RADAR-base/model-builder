@@ -1,0 +1,11 @@
+simplejson
+psycopg2-binary
+pandas
+sqlalchemy
+testing.postgresql
+pytest
+openpyxl
+boto3
+mlflow
+numpy
+scikit-learn
