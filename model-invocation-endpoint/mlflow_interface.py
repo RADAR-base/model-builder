@@ -14,8 +14,12 @@ import importlib
 from sqlalchemy.exc import DataError, DBAPIError
 from requests.exceptions import ConnectionError
 from botocore.exceptions import EndpointConnectionError, ClientError
+import subprocess
 
 class MlflowInterface():
+
+    def clean_tmp(self):
+        subprocess.run(["tm", "-r", "/tmp"])
 
     def __init__(self):
         self.load_env_file()
@@ -78,6 +82,8 @@ class MlflowInterface():
             return all_runs[len(all_runs) - version]
 
     def _mlflow_inference(self, model_run, df):
+        # Temporary patch which clears temp beforing downloading new one
+        self.clean_tmp()
         if df is None:
             raise HTTPException(404, f"No data available for inference")
         try:

@@ -2,12 +2,16 @@ from typing import Optional, Union
 from fastapi import FastAPI, HTTPException, Header, Query
 from fastapi.responses import PlainTextResponse
 from dataloader_module import DataInputModel, DataLoaderClass
+import subprocess
 
 from mlflow_interface import MlflowInterface
 import mlflow
 
 app = FastAPI()
 mlflow_interface = MlflowInterface()
+
+def clean_tmp():
+    subprocess.run(["tm", "-r", "/tmp"])
 
 @app.get("/models")
 def get_all_experiments():
