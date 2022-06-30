@@ -17,11 +17,12 @@ from botocore.exceptions import EndpointConnectionError, ClientError
 import subprocess
 from pathlib import Path
 import datetime
+import shutil
 
 class MlflowInterface():
 
     def clean_tmp(self, path):
-        subprocess.run(["rm", "-r", path])
+       shutil.rmtree(path, ignore_errors=True)
 
     def __init__(self):
         self.load_env_file()
