@@ -15,17 +15,31 @@ from sqlalchemy.exc import DataError, DBAPIError
 from requests.exceptions import ConnectionError
 from botocore.exceptions import EndpointConnectionError, ClientError
 import subprocess
+from pathlib import Path
+import datetime
 
 class MlflowInterface():
 
-    def clean_tmp(self):
-        subprocess.run(["tm", "-r", "/tmp"])
+    def clean_tmp(self, path):
+        subprocess.run(["rm", "-r", path])
+        subprocess.run(["rmdir", path])
 
     def __init__(self):
         self.load_env_file()
         self.mlflow_tracking_uri, self.mlflow_registry_uri = self.get_mlflow_uris()
         self.client = MlflowClient(tracking_uri=self.mlflow_tracking_uri, registry_uri=self.mlflow_registry_uri)
+        self.dst_path = os.environ.get('DST_PATH')
         self._get_postgres_data()
+        self._create_dst_path()
+
+    def _create_dst_path(self):
+        home = str(Path.home())
+        # make sure that dst_path variable is not not None
+        if self.dst_path is None or self.dst_path == "":
+            self.dst_path = os.path.join(home, ".tmp_models")
+        else:
+            self.dst_path = os.path.join(home, self.dst_path)
+        Path(self.dst_path).mkdir(parents=True, exist_ok=True)
 
     def load_env_file(self):
         load_dotenv('.env')
@@ -82,17 +96,21 @@ class MlflowInterface():
             return all_runs[len(all_runs) - version]
 
     def _mlflow_inference(self, model_run, df):
-        # Temporary patch which clears temp beforing downloading new one
-        self.clean_tmp()
+        # Makiing using dst path using timestamp
+        unique_dst_path = os.path.join(self.dst_path, datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+        Path(unique_dst_path).mkdir(parents=True, exist_ok=True)
         if df is None:
             raise HTTPException(404, f"No data available for inference")
         try:
-            loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" + json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"])
+            loaded_model = mlflow.pyfunc.load_model(model_run.info.artifact_uri + "/" +
+                    json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"], dst_path=unique_dst_path)
         except EndpointConnectionError:
             raise HTTPException(502, f"Minio Server Error: Cannot access the registered model")
         except ClientError as e:
             raise HTTPException(502, f"Minio Server Error: {e}")
-        return loaded_model.predict(df)
+        predictions = loaded_model.predict(df)
+        self.clean_tmp(unique_dst_path)
+        return predictions
 
     def _convert_data_to_df(self, data):
         data_format = data.format
