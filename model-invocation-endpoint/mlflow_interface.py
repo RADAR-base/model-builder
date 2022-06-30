@@ -22,7 +22,6 @@ class MlflowInterface():
 
     def clean_tmp(self, path):
         subprocess.run(["rm", "-r", path])
-        subprocess.run(["rmdir", path])
 
     def __init__(self):
         self.load_env_file()
@@ -106,8 +105,12 @@ class MlflowInterface():
                     json.loads(model_run.data.tags["mlflow.log-model.history"])[0]["artifact_path"], dst_path=unique_dst_path)
         except EndpointConnectionError:
             raise HTTPException(502, f"Minio Server Error: Cannot access the registered model")
+        except KeyError as e:
+            raise HTTPException(502, f"Key Error: {e}")
         except ClientError as e:
             raise HTTPException(502, f"Minio Server Error: {e}")
+        except Exception as e:
+            raise HTTPException(502, f"Mlflow Server Error: {e}")
         predictions = loaded_model.predict(df)
         self.clean_tmp(unique_dst_path)
         return predictions
