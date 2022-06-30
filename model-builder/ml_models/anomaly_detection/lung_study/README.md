@@ -11,7 +11,7 @@ docker build -t lung_study_lstm_anomaly_detection -f model-builder/ml_models/Doc
 Run the docker file using the following command:
 
 ```bash
-docker run --env conda_file_path=model-builder/ml_models/anamoly_detection/lung_study/conda.yaml --env conda_env_name=lung_study_lstm_anomaly_detection  --env ml_training_file=model-builder/ml_models/anamoly_detection/lung_study/train.py  lung_study_lstm_anomaly_detection
+docker run --env conda_file_path=model-builder/ml_models/anomaly_detection/lung_study/conda.yaml --env conda_env_name=lung_study_lstm_anomaly_detection  --env ml_training_file=model-builder/ml_models/anomaly_detection/lung_study/train.py  lung_study_lstm_anomaly_detection
 ```
 
 ### Configuring Env file
