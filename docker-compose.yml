@@ -1,5 +1,3 @@
-version: '3.3'
-
 services:
     model-invocation:
       build:
@@ -33,12 +31,12 @@ services:
       command: pgdb:5432
 
     pgdb:
-        image: postgres:13.1-alpine
+        image: postgres:16.3-alpine
         ports:
           - 5432:5432
         environment:
           POSTGRES_USER: ${POSTGRES_USER}
-          POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+          POSTGRES_PASSWORD: ${POSTGRES_PASS}
           POSTGRES_DB: mlflow-db
         restart: always
         volumes:
@@ -55,7 +53,7 @@ services:
             - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
             - S3_HOST=s3
             - S3_PORT=9000
-            - DB_URI=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pgdb:5432/mlflow-db
+            - DB_URI=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASS}@pgdb:5432/mlflow-db
             - SERVER_HOST=${HOST}
             - SERVER_PORT=${MLFLOW_PORT}
             - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
