@@ -14,6 +14,10 @@ ENV MLFLOW_S3_ENDPOINT_URL=http://${S3_HOST}:${S3_PORT}
 ENV MLFLOW_HOME=/opt/mlflow
 ENV ARTIFACT_STORE=s3://${AWS_BUCKET_NAME}/
 
+RUN sed -i s/deb.debian.org/archive.debian.org/g /etc/apt/sources.list
+RUN sed -i s/security.debian.org/archive.debian.org/g /etc/apt/sources.list
+RUN sed -i s/stretch-updates/stretch/g /etc/apt/sources.list
+
 RUN apt-get update && apt-get install -y \
     build-essential \
     python3-dev \
@@ -25,7 +29,7 @@ RUN apt-get -y install python-pip
 
 RUN pip install --upgrade pip
 
-RUN pip install mlflow sqlalchemy psycopg2-binary && \
+RUN pip install mlflow sqlalchemy psycopg2-binary boto3 && \
     mkdir -p ${MLFLOW_HOME}/scripts && \
     #mkdir -p ${FILE_STORE} && \
     mkdir -p ${ARTIFACT_STORE}

@@ -1,5 +1,5 @@
 mlflow
-sklearn
+scikit-learn
 pandas
 numpy
 fastapi
@@ -10,4 +10,3 @@ sqlalchemy
 testing.postgresql
 psycopg2-binary
 torch
-conda

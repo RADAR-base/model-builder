@@ -9,7 +9,7 @@ mc ls myminio
 echo "Created bucket ${AWS_BUCKET_NAME}"
 
 # uncomment below when you see any issue with db...
-#mlflow db upgrade $DB_URI
+mlflow db upgrade $DB_URI
 
 mlflow server \
     --backend-store-uri $DB_URI \
