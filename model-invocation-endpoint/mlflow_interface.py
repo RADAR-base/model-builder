@@ -55,18 +55,18 @@ class MlflowInterface():
     def _get_postgres_data(self):
         self.postgres_data = {}
         self.postgres_inference_data = {}
-        self.postgres_data["user"] = os.environ.get('POSTGRES_USER')
-        self.postgres_data["password"] = os.environ.get('POSTGRES_PASS')
-        self.postgres_data["host"] = os.environ.get('POSTGRES_HOST')
-        self.postgres_data["port"] = os.environ.get('POSTGRES_PORT')
+        self.postgres_data["user"] = os.environ.get('SOURCE_POSTGRES_USER')
+        self.postgres_data["password"] = os.environ.get('SOURCE_POSTGRES_PASS')
+        self.postgres_data["host"] = os.environ.get('SOURCE_POSTGRES_HOST')
+        self.postgres_data["port"] = os.environ.get('SOURCE_POSTGRES_PORT')
         self.postgres_inference_data["user"] = os.environ.get(
-                                                'INFERENCE_POSTGRES_USER')
+                                                'DESTINATION_POSTGRES_USER')
         self.postgres_inference_data["password"] = os.environ.get(
-                                                    'INFERENCE_POSTGRES_PASS')
+                                                    'DESTINATION_POSTGRES_PASS')
         self.postgres_inference_data["host"] = os.environ.get(
-                                                'INFERENCE_POSTGRES_HOST')
+                                                'DESTINATION_POSTGRES_HOST')
         self.postgres_inference_data["port"] = os.environ.get(
-                                                'INFERENCE_POSTGRES_PORT')
+                                                'DESTINATION_POSTGRES_PORT')
 
     def _search_experiment_by_name(self, name):
         try:

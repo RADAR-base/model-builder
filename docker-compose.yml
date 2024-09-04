@@ -19,8 +19,8 @@ services:
         - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
         - MLFLOW_TRACKING_URI=http://mlflow-server:5000
         - MLFLOW_URL=http://mlflow-server:5000
-        - POSTGRES_USER=${POSTGRES_USER}
-        - POSTGRES_PASS=${POSTGRES_PASS}
+        - POSTGRES_USER=${SOURCE_POSTGRES_USER}
+        - POSTGRES_PASS=${SOURCE_POSTGRES_PASS}
         - POSTGRES_HOST=pgdb
         - POSTGRES_PORT=5432
 
@@ -35,8 +35,8 @@ services:
         ports:
           - 5432:5432
         environment:
-          POSTGRES_USER: ${POSTGRES_USER}
-          POSTGRES_PASSWORD: ${POSTGRES_PASS}
+          POSTGRES_USER: ${SOURCE_POSTGRES_USER}
+          POSTGRES_PASSWORD: ${SOURCE_POSTGRES_PASS}
           POSTGRES_DB: mlflow-db
         restart: always
         volumes:
@@ -53,7 +53,7 @@ services:
             - MLFLOW_S3_ENDPOINT_URL=http://s3:9000
             - S3_HOST=s3
             - S3_PORT=9000
-            - DB_URI=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASS}@pgdb:5432/mlflow-db
+            - DB_URI=postgresql+psycopg2://${SOURCE_POSTGRES_USER}:${SOURCE_POSTGRES_PASS}@pgdb:5432/mlflow-db
             - SERVER_HOST=${HOST}
             - SERVER_PORT=${MLFLOW_PORT}
             - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
