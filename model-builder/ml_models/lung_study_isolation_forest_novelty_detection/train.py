@@ -39,12 +39,12 @@ def argparser():
 
 def get_postgres_data():
         postgres_data = {}
-        postgres_data["user"] = os.environ.get('POSTGRES_USER')
-        postgres_data["password"] = os.environ.get('POSTGRES_PASS')
-        postgres_data["tablename"] = os.environ.get('POSTGRES_TABLENAME')
-        postgres_data["host"] = os.environ.get('POSTGRES_HOST')
-        postgres_data["port"] = os.environ.get('POSTGRES_PORT')
-        postgres_data["dbname"] = os.environ.get('POSTGRES_DBNAME')
+        postgres_data["user"] = os.environ.get('SOURCE_POSTGRES_USER')
+        postgres_data["password"] = os.environ.get('SOURCE_POSTGRES_PASS')
+        postgres_data["tablename"] = os.environ.get('SOURCE_POSTGRES_TABLENAME')
+        postgres_data["host"] = os.environ.get('SOURCE_POSTGRES_HOST')
+        postgres_data["port"] = os.environ.get('SOURCE_POSTGRES_PORT')
+        postgres_data["dbname"] = os.environ.get('SOURCE_POSTGRES_DBNAME')
         return postgres_data
 
 def get_mlflow_uris():

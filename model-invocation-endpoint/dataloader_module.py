@@ -1,25 +1,27 @@
 
-from pydantic import BaseModel,ValidationError, validator
+from pydantic import BaseModel, validator
 from typing import List, Union, Dict
 import datetime
-from uuid import UUID
+
 
 class DataInputModelSplit(BaseModel):
     columns: List[str]
     data: List[List[Union[int, float, str]]]
-    format = "pandas_split"
+    format: str = "pandas_split"
 
     @validator('data')
     def data_size_must_be_equal_column(cls, v, values):
         column_len = len(values["columns"])
         for data_point in v:
             if len(data_point) != column_len:
-                raise ValueError("Size of data point is different from that of column")
+                raise ValueError(
+                    "Size of data point is different from that of column")
         return v
+
 
 class DataInputModelRecord(BaseModel):
     record: List[Dict[str, Union[int, float, str]]]
-    format = "pandas_record"
+    format: str = "pandas_record"
 
     @validator("record")
     def check_dict_keys(cls, v):
@@ -33,8 +35,11 @@ class DataInputModelRecord(BaseModel):
 
 
 class DataInputModelInputs(BaseModel):
-    inputs: Dict[str, List[Union[int, float, str, List[Union[int, float, str]]]]]
-    format = "tf-inputs"
+    inputs: Dict[str,
+                 List[Union[int, float, str,
+                            List[Union[int, float, str]]]]]
+    format: str = "tf-inputs"
+
     @validator("inputs")
     def check_input_format(cls, v):
         input_len = None
@@ -45,9 +50,13 @@ class DataInputModelInputs(BaseModel):
                 raise ValueError("Inconsistent data size in input")
         return v
 
+
 class DataInputModelInstances(BaseModel):
-    instances: List[Dict[str, Union[int, float, str, List[Union[int, float, str]]]]]
-    format = "tf-instances"
+    instances: List[Dict[str,
+                         Union[int, float, str,
+                               List[Union[int, float, str]]]]]
+    format: str = "tf-instances"
+
     @validator("instances")
     def check_instance_format(cls, v):
         if len(v) == 0:
@@ -58,7 +67,12 @@ class DataInputModelInstances(BaseModel):
                 raise ValueError("Mismatch columns in the input")
         return v
 
-DataInputModel = Union[DataInputModelSplit, DataInputModelInstances, DataInputModelInputs, DataInputModelRecord]
+
+DataInputModel = Union[DataInputModelSplit,
+                       DataInputModelInstances,
+                       DataInputModelInputs,
+                       DataInputModelRecord]
+
 
 class DataLoaderClass(BaseModel):
     filename: str
